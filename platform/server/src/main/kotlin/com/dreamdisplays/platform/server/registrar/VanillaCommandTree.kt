@@ -3,6 +3,7 @@ package com.dreamdisplays.platform.server.registrar
 import com.dreamdisplays.platform.server.PermissionsSection
 import com.dreamdisplays.platform.server.VanillaServerState
 import com.dreamdisplays.platform.server.commands.subcommands.*
+import com.dreamdisplays.platform.server.managers.SpeakerManager
 import com.dreamdisplays.platform.server.playback.FullscreenBroadcastManager
 import com.dreamdisplays.platform.server.registrar.VanillaCommandTree.fullscreenFlagsNode
 import com.dreamdisplays.platform.server.utils.MessageUtil
@@ -53,6 +54,7 @@ object VanillaCommandTree {
             .then(toggleNode("on"))
             .then(toggleNode("off"))
             .then(fullscreenNode())
+            .then(speakerNode())
             .build()
 
     /** Builds the `/display help` subcommand. */
@@ -369,6 +371,57 @@ object VanillaCommandTree {
     private fun fullscreenListNode() = Commands.literal("list")
         .requires { requiresNode(it, { p -> p.fullscreenList }, VanillaPermissions.Fallback.OP) }
         .executes { ctx -> VanillaFullscreenCommand.list(ctx) }
+
+    /** `/display speaker create [name] [radius] | list | delete <id>`. */
+    private fun speakerNode(): LiteralArgumentBuilder<CommandSourceStack> = Commands.literal("speaker")
+        .executes { ctx ->
+            VanillaSpeakerCommand.list(ctx)
+            Command.SINGLE_SUCCESS
+        }
+        .then(
+            Commands.literal("create")
+                .requires { requiresNode(it, { p -> p.speaker }, VanillaPermissions.Fallback.OP) }
+                .executes { ctx -> VanillaSpeakerCommand.create(ctx, null, null) }
+                .then(
+                    Commands.argument("name", StringArgumentType.word())
+                        .executes { ctx ->
+                            VanillaSpeakerCommand.create(ctx, StringArgumentType.getString(ctx, "name"), null)
+                        }
+                        .then(
+                            Commands.argument("radius", DoubleArgumentType.doubleArg(1.0, 256.0))
+                                .executes { ctx ->
+                                    VanillaSpeakerCommand.create(
+                                        ctx,
+                                        StringArgumentType.getString(ctx, "name"),
+                                        DoubleArgumentType.getDouble(ctx, "radius"),
+                                    )
+                                }
+                        )
+                )
+        )
+        .then(
+            Commands.literal("list")
+                .requires { requiresNode(it, { p -> p.speaker }, VanillaPermissions.Fallback.OP) }
+                .executes { ctx ->
+                    VanillaSpeakerCommand.list(ctx)
+                    Command.SINGLE_SUCCESS
+                }
+        )
+        .then(
+            Commands.literal("delete")
+                .requires { requiresNode(it, { p -> p.speaker }, VanillaPermissions.Fallback.OP) }
+                .then(
+                    Commands.argument("id", StringArgumentType.word())
+                        .suggests { _, builder ->
+                            SpeakerManager.suggestions().forEach { builder.suggest(it) }
+                            builder.buildFuture()
+                        }
+                        .executes { ctx ->
+                            VanillaSpeakerCommand.delete(ctx, StringArgumentType.getString(ctx, "id"))
+                            Command.SINGLE_SUCCESS
+                        }
+                )
+        )
 
     /** Permission gate shared by every node: console always passes, players are checked against [node]. */
     private fun requiresNode(

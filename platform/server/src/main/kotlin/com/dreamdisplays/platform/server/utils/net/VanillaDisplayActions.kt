@@ -13,6 +13,7 @@ import com.dreamdisplays.platform.server.datatypes.display.VanillaDisplayData
 import com.dreamdisplays.platform.server.managers.ActionThrottle
 import com.dreamdisplays.platform.server.managers.DisplayManager
 import com.dreamdisplays.platform.server.managers.PlayerManager
+import com.dreamdisplays.platform.server.managers.SpeakerManager
 import com.dreamdisplays.platform.server.managers.StateManager
 import com.dreamdisplays.platform.server.meta.ServerCoroutines
 import com.dreamdisplays.platform.server.meta.VersionState
@@ -164,6 +165,55 @@ object VanillaDisplayActions {
 
         val receivers = DisplayManager.getReceivers(displayData, server)
         VanillaPacketUtil.sendDisplayInfo(receivers, displayData)
+    }
+
+    /** Binds [speakerId] to a display owned by [player] (at most [SpeakerManager.MAX_SPEAKERS_PER_DISPLAY]) and rebroadcasts. */
+    fun addSpeaker(player: ServerPlayer, server: MinecraftServer, displayId: java.util.UUID, speakerId: java.util.UUID) {
+        val displayData = DisplayManager.getDisplayData(displayId) as? VanillaDisplayData
+            ?: return MessageUtil.sendMessage(player, "noDisplay")
+        if (!PlaybackPermissions.canToggleLock(lockContext(displayData, player))) {
+            MessageUtil.sendMessage(player, "displayCommandMissingPermission")
+            return
+        }
+        val speaker = SpeakerManager.get(speakerId) ?: return MessageUtil.sendMessage(player, "speakerNotFound")
+        if (speakerId in displayData.speakers) return
+        if (displayData.speakers.size >= SpeakerManager.MAX_SPEAKERS_PER_DISPLAY) {
+            return MessageUtil.sendMessage(player, "displaySpeakerLimitReached")
+        }
+
+        displayData.speakers = displayData.speakers + speakerId
+        ServerCoroutines.io.launch { VanillaServerState.storage?.saveDisplay(displayData) }
+        VanillaPacketUtil.sendDisplayInfo(DisplayManager.getReceivers(displayData, server), displayData)
+        MessageUtil.sendMessage(player, "speakerBound", speaker.name)
+    }
+
+    /** Unbinds [speakerId] from a display owned by [player] and rebroadcasts. */
+    fun removeSpeaker(player: ServerPlayer, server: MinecraftServer, displayId: java.util.UUID, speakerId: java.util.UUID) {
+        val displayData = DisplayManager.getDisplayData(displayId) as? VanillaDisplayData
+            ?: return MessageUtil.sendMessage(player, "noDisplay")
+        if (!PlaybackPermissions.canToggleLock(lockContext(displayData, player))) {
+            MessageUtil.sendMessage(player, "displayCommandMissingPermission")
+            return
+        }
+
+        displayData.speakers = displayData.speakers.filter { it != speakerId }
+        ServerCoroutines.io.launch { VanillaServerState.storage?.saveDisplay(displayData) }
+        VanillaPacketUtil.sendDisplayInfo(DisplayManager.getReceivers(displayData, server), displayData)
+        MessageUtil.sendMessage(player, "speakerUnbound")
+    }
+
+    /** Toggles a display's room confinement (hard-mute outside its speakers' rooms) and rebroadcasts. */
+    fun setRoomConfined(player: ServerPlayer, server: MinecraftServer, displayId: java.util.UUID, enabled: Boolean) {
+        val displayData = DisplayManager.getDisplayData(displayId) as? VanillaDisplayData
+            ?: return MessageUtil.sendMessage(player, "noDisplay")
+        if (!PlaybackPermissions.canToggleLock(lockContext(displayData, player))) {
+            MessageUtil.sendMessage(player, "displayCommandMissingPermission")
+            return
+        }
+
+        displayData.roomConfined = enabled
+        ServerCoroutines.io.launch { VanillaServerState.storage?.saveDisplay(displayData) }
+        VanillaPacketUtil.sendDisplayInfo(DisplayManager.getReceivers(displayData, server), displayData)
     }
 
     /** Switches a display's persistent base mode (`LOCAL` / `SYNCED` / `BROADCAST`) and re-anchors its clock. */

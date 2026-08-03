@@ -40,4 +40,6 @@ data class FullDisplayData(
     var currentTimeNanos: Long = 0,
     var rotation: Int = 0,
     var qualityCap: Int = 0,
+    var speakerUuids: List<String> = emptyList(),
+    var roomConfined: Boolean = false,
 )

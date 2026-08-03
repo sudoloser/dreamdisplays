@@ -84,6 +84,12 @@ class DisplaysTable(prefix: String = "") : Table("${prefix}displays") {
     /** Integer representing the playback mode of the display. */
     val mode = integer("mode").default(PlaybackMode.LOCAL.wire)
 
+    /** Comma-separated UUIDs of the speakers this display routes audio through (max 10). */
+    val speakerIds = varchar("speakerIds", 400).default("")
+
+    /** Boolean indicating whether the display's audio is confined to its speakers' rooms. */
+    val roomConfined = bool("roomConfined").default(false)
+
     /** Primary key for the displays table, which is the unique identifier of the display. */
     override val primaryKey = PrimaryKey(id)
 }
@@ -235,6 +241,8 @@ class StorageManager(
                 it[lang] = data.lang
                 it[isLocked] = data.isLocked
                 it[mode] = data.mode.wire
+                it[speakerIds] = data.speakers.joinToString(",") { it.toString() }
+                it[roomConfined] = data.roomConfined
             }
         }
     }
@@ -253,5 +261,10 @@ class StorageManager(
         duration = row[table.duration]
         lang = row[table.lang]
         isLocked = row[table.isLocked]
+        speakers = row[table.speakerIds]
+            .split(',')
+            .filter { it.isNotBlank() }
+            .mapNotNull { runCatching { UUID.fromString(it.trim()) }.getOrNull() }
+        roomConfined = row[table.roomConfined]
     }
 }

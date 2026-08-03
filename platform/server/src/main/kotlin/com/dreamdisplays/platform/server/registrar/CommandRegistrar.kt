@@ -2,6 +2,7 @@ package com.dreamdisplays.platform.server.registrar
 
 import com.dreamdisplays.platform.server.PaperServer
 import com.dreamdisplays.platform.server.commands.subcommands.*
+import com.dreamdisplays.platform.server.managers.SpeakerManager
 import com.dreamdisplays.platform.server.playback.FullscreenBroadcastManager
 import com.dreamdisplays.platform.server.registrar.CommandRegistrar.fullscreenFlagsNode
 import com.dreamdisplays.platform.server.utils.MessageUtil
@@ -68,6 +69,7 @@ object CommandRegistrar {
         .then(toggleSubCommand("on", OnCommand()))
         .then(toggleSubCommand("off", OffCommand()))
         .then(fullscreenSubCommand())
+        .then(speakerSubCommand())
         .build()
 
     /** Builds a simple no-argument subcommand node optionally guarded by a permission check. */
@@ -334,6 +336,62 @@ object CommandRegistrar {
             .forEach { builder.suggest(before + it) }
         return builder.buildFuture()
     }
+
+    /** Builds the `/display speaker create [name] [radius] | list | delete <id>` subcommand. */
+    private fun speakerSubCommand(): LiteralArgumentBuilder<CommandSourceStack> = Commands.literal("speaker")
+        .executes { ctx ->
+            PaperSpeakerCommand.list(ctx.source.sender)
+            Command.SINGLE_SUCCESS
+        }
+        .then(
+            Commands.literal("create")
+                .requires { it.sender is Player && it.sender.hasPermission(PaperServer.config.permissions.speaker) }
+                .executes { ctx ->
+                    PaperSpeakerCommand.create(ctx.source.sender, null, null)
+                    Command.SINGLE_SUCCESS
+                }
+                .then(
+                    Commands.argument("name", StringArgumentType.word())
+                        .executes { ctx ->
+                            PaperSpeakerCommand.create(ctx.source.sender, StringArgumentType.getString(ctx, "name"), null)
+                            Command.SINGLE_SUCCESS
+                        }
+                        .then(
+                            Commands.argument("radius", DoubleArgumentType.doubleArg(1.0, 256.0))
+                                .executes { ctx ->
+                                    PaperSpeakerCommand.create(
+                                        ctx.source.sender,
+                                        StringArgumentType.getString(ctx, "name"),
+                                        DoubleArgumentType.getDouble(ctx, "radius"),
+                                    )
+                                    Command.SINGLE_SUCCESS
+                                }
+                        )
+                )
+        )
+        .then(
+            Commands.literal("list")
+                .requires { it.sender.hasPermission(PaperServer.config.permissions.speaker) }
+                .executes { ctx ->
+                    PaperSpeakerCommand.list(ctx.source.sender)
+                    Command.SINGLE_SUCCESS
+                }
+        )
+        .then(
+            Commands.literal("delete")
+                .requires { it.sender.hasPermission(PaperServer.config.permissions.speaker) }
+                .then(
+                    Commands.argument("id", StringArgumentType.word())
+                        .suggests { _, builder ->
+                            SpeakerManager.suggestions().forEach { builder.suggest(it) }
+                            builder.buildFuture()
+                        }
+                        .executes { ctx ->
+                            PaperSpeakerCommand.delete(ctx.source.sender, StringArgumentType.getString(ctx, "id"))
+                            Command.SINGLE_SUCCESS
+                        }
+                )
+        )
 
     /** Builds the `/display list [filter] [value] [page]` subcommand with progressive suggestions. */
     private fun listSubCommand(): LiteralArgumentBuilder<CommandSourceStack> {

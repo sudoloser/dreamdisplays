@@ -117,6 +117,14 @@ object NeoForgeV2Networking {
                 PipPinManager.unpin(player.uuid, packet.id)
             }
 
+            is BindSpeaker -> if (packet.bind) {
+                VanillaDisplayActions.addSpeaker(player, server, packet.id, packet.speakerId)
+            } else {
+                VanillaDisplayActions.removeSpeaker(player, server, packet.id, packet.speakerId)
+            }
+
+            is SetRoomConfined -> VanillaDisplayActions.setRoomConfined(player, server, packet.id, packet.enabled)
+
             else -> logger.debug("Ignoring non-serverbound v2 packet {}.", packet::class.simpleName)
         }
     }
@@ -142,6 +150,7 @@ object NeoForgeV2Networking {
         )
         VanillaDisplayActions.recordVersionAndCheckUpdates(player, hello.modVersion)
         VanillaDisplayActions.sendAllDisplays(player, server)
+        sendSpeakers(listOf(player))
         FullscreenBroadcastManager.onPlayerJoin(player.uuid)
         PipPinManager.onPlayerJoin(player.uuid)
     }

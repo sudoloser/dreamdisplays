@@ -92,6 +92,12 @@ class DisplayScreen(
     /** Server-reported lock state, or `null` until the server reports it. */
     var isLocked: Boolean? = null
 
+    /** Ids of the speakers this display routes its audio through (server-reported, up to 10). */
+    var speakerIds: List<UUID> = emptyList()
+
+    /** True when this display's audio is hard-muted for listeners outside its speakers' rooms. */
+    var roomConfined: Boolean = false
+
     /** The last media failure on this display, or `null` when healthy. */
     @Volatile
     var mediaError: DreamMediaException? = null
@@ -531,6 +537,8 @@ class DisplayScreen(
         qualityCap = packet.qualityCap
         isLocked = packet.isLocked
         owner = Minecraft.getInstance().player?.gameProfile?.id?.toString() == packet.ownerId.toString()
+        speakerIds = packet.speakerIds
+        roomConfined = packet.roomConfined
 
         if (videoUrl != packet.url || lang != packet.lang) {
             val previousUrl = videoUrl
@@ -1015,9 +1023,16 @@ class DisplayScreen(
                 bypassSpatial = isPopoutActive,
                 acousticsEnabled = acousticsEnabled,
                 environment = probeEnvironment(plane),
+                rooms = speakerRooms(),
+                roomConfined = roomConfined,
             ),
         )
     }
+
+    /** Builds the [SourceRoom]s for this display's bound speakers, or empty when none are bound. */
+    private fun speakerRooms(): List<SourceRoom> =
+        speakerIds.mapNotNull { SpeakerRegistry.get(it) }
+            .map { SourceRoom(it.x.toDouble(), it.y.toDouble(), it.z.toDouble(), it.radius.toDouble()) }
 
     /**
      * Returns the display's current acoustic environment, re-running the (relatively costly) voxel

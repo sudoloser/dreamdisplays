@@ -92,6 +92,40 @@ class RoundTripTest {
     }
 
     @Test
+    fun speakerPackets() {
+        val speakerId = UUID.randomUUID()
+        roundTrip(
+            SpeakerInfo(
+                id = speakerId, name = "Lobby", world = "minecraft:overworld",
+                x = -10, y = 64, z = 20, radius = 16f,
+            )
+        )
+        roundTrip(SpeakerList(emptyList()))
+        roundTrip(
+            SpeakerList(
+                listOf(
+                    SpeakerInfo(speakerId, "Lobby", "minecraft:overworld", -10, 64, 20, 16f),
+                    SpeakerInfo(id, "Hall", "minecraft:the_nether", 0, 0, 0, 24f),
+                )
+            )
+        )
+        roundTrip(BindSpeaker(id, speakerId, bind = true))
+        roundTrip(BindSpeaker(id, speakerId, bind = false))
+        roundTrip(SetRoomConfined(id, enabled = true))
+        roundTrip(SetRoomConfined(id, enabled = false))
+    }
+
+    @Test
+    fun displayInfoCarriesSpeakers() = roundTrip(
+        DisplayInfo(
+            id = id, ownerId = owner, x = 0, y = 64, z = 0,
+            width = 16, height = 9, facing = 2,
+            speakerIds = listOf(owner, id),
+            roomConfined = true,
+        )
+    )
+
+    @Test
     fun playbackModePackets() {
         roundTrip(PlaybackCommand(id, action = PlaybackAction.SEEK.wire, positionMs = 42_000))
         roundTrip(SetMode(id, mode = PlaybackMode.SYNCED.wire))

@@ -184,6 +184,7 @@ object DisplayManager {
             display.url, display.lang, display.facing, display.isSync, display.isLocked,
             display.mode, display.qualityCap, display.rotation,
             virtual = display.virtual, forced = forced,
+            speakerIds = display.speakers, roomConfined = display.roomConfined,
         )
     }
 

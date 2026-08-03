@@ -171,6 +171,7 @@ data class PermissionsSection(
     val fullscreenStop get() = permissions.fullscreen_stop
     val fullscreenList get() = permissions.fullscreen_list
     val custom get() = permissions.custom
+    val speaker get() = permissions.speaker
 
     data class PermissionsConfig(
         val create: String = "dreamdisplays.create",
@@ -195,6 +196,7 @@ data class PermissionsSection(
         val fullscreen_stop: String = "dreamdisplays.fullscreen.stop",
         val fullscreen_list: String = "dreamdisplays.fullscreen.list",
         val custom: String = "dreamdisplays.custom",
+        val speaker: String = "dreamdisplays.speaker",
     )
 }
 

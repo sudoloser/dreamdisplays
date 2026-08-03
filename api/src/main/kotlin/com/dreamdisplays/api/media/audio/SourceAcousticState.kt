@@ -33,4 +33,13 @@ data class SourceAcousticState(
      * the pure-spatialization behavior with no environmental coloring.
      */
     val environment: AcousticEnvironment = AcousticEnvironment.OPEN_AIR,
+
+    /**
+     * Rooms this source is confined to (from its display's bound speakers). When [roomConfined] is
+     * true, the source is hard-muted whenever the listener is outside every room.
+     */
+    val rooms: List<SourceRoom> = emptyList(),
+
+    /** True when this source's audio must be inaudible outside its [rooms]. */
+    val roomConfined: Boolean = false,
 )

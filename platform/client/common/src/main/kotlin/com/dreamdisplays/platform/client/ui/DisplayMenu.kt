@@ -66,6 +66,9 @@ class DisplayMenu private constructor(
         },
     )
 
+    private lateinit var speakersButton: IconButton
+    private val soundPanel = SoundSourcesPanel(displayScreen)
+
     private lateinit var volume: ValueSlider
     private lateinit var renderD: ValueSlider
     private lateinit var quality: ValueSlider
@@ -252,6 +255,7 @@ class DisplayMenu private constructor(
         muteButton.visibleWhen = notErrored
 
         popoutButton = addUi(IconButton("popout") {
+            soundPanel.hide()
             if (ds.isPopoutActive) {
                 popout.close(displayId)
                 dropdown.hide()
@@ -262,9 +266,20 @@ class DisplayMenu private constructor(
         popoutButton.enabledWhen = { videoReady() && (ds.canPopoutHere || ds.isPopoutActive) }
         popoutButton.visibleWhen = notErrored
 
-        audioTrackButton = addUi(IconButton("lang") { audioTrackDropdown.toggle() })
+        audioTrackButton = addUi(IconButton("lang") {
+            soundPanel.hide()
+            audioTrackDropdown.toggle()
+        })
         audioTrackButton.enabledWhen = { videoReady() && ds.audioTrackList.size > 1 }
         audioTrackButton.visibleWhen = notErrored
+
+        speakersButton = addUi(IconButton("sound") {
+            dropdown.hide()
+            audioTrackDropdown.hide()
+            soundPanel.toggle()
+        })
+        speakersButton.enabledWhen = { ds.owner || ds.isAdmin }
+        speakersButton.visibleWhen = notErrored
 
         val pauseButton = addUi(
             IconButton(
@@ -345,7 +360,7 @@ class DisplayMenu private constructor(
             )
         settings = SettingsSection(
             rows = settingsRows(renderDReset, qualityReset, brightnessReset, audio3dReset, syncReset),
-            ownerActions = listOf(reportButton, deleteButton, lockButton),
+            ownerActions = listOf(reportButton, deleteButton, lockButton, speakersButton),
             buttonTooltips = listOf(
                 lockButton to {
                     ds.isLocked?.let { locked ->
@@ -491,6 +506,7 @@ class DisplayMenu private constructor(
 
         if (ds.errored) {
             dropdown.hide()
+            soundPanel.hide()
             suggestionsRect = null
             errorPanel.render(g, width, height)
             drawChildren(g, mouseX, mouseY, partialTick)
@@ -517,6 +533,9 @@ class DisplayMenu private constructor(
         refreshRelatedVideos()
 
         drawChildren(g, mouseX, mouseY, partialTick)
+        if (soundPanel.isVisible() && speakersButton.visible) {
+            soundPanel.draw(g, speakersButton.x + speakersButton.width / 2, speakersButton.y, mouseX, mouseY)
+        }
         settings.renderTooltips(g, mouseX, mouseY, toRealX(mouseX), toRealY(mouseY))
     }
 
@@ -566,6 +585,9 @@ class DisplayMenu private constructor(
                 my
             )
         ) return true
+        if (soundPanel.isVisible() && event.button() == 0 && !speakersButton.isMouseOver(mx.toDouble(), my.toDouble())) {
+            if (soundPanel.handleClick(mx, my)) return true
+        }
         return modLabel.handleClick(mx, my)
     }
 
@@ -582,6 +604,9 @@ class DisplayMenu private constructor(
         if (dropdown.visible && button == 0 && !onPopoutButton && dropdown.handleClick(mx, my)) return true
         val onAudioTrackButton = audioTrackButton.isMouseOver(mouseX, mouseY)
         if (audioTrackDropdown.visible && button == 0 && !onAudioTrackButton && audioTrackDropdown.handleClick(mx, my)) return true
+        if (soundPanel.isVisible() && button == 0 && !speakersButton.isMouseOver(mouseX, mouseY)) {
+            if (soundPanel.handleClick(mx, my)) return true
+        }
         return modLabel.handleClick(mx, my)
     }
 

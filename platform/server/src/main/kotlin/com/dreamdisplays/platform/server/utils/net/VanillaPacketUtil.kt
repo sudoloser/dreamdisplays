@@ -8,6 +8,7 @@ import com.dreamdisplays.platform.client.net.Packets
 import com.dreamdisplays.platform.server.datatypes.display.VanillaDisplayData
 import com.dreamdisplays.platform.server.datatypes.sync.SyncData
 import com.dreamdisplays.platform.server.playback.TimelineManager
+import com.dreamdisplays.platform.server.utils.RegionUtil
 import com.dreamdisplays.util.FacingUtil
 import net.minecraft.core.Direction
 import net.minecraft.server.level.ServerPlayer
@@ -41,6 +42,7 @@ object VanillaPacketUtil {
                 mode = display.mode.wire, qualityCap = display.qualityCap,
                 rotation = display.rotation.quarterTurns,
                 virtual = display.virtual, forced = forced,
+                speakerIds = display.speakers, roomConfined = display.roomConfined,
             ),
         )
         if (legacy.isEmpty()) return
@@ -121,6 +123,16 @@ object VanillaPacketUtil {
         if (legacy.isEmpty()) return
         val packet = Packets.ClearCache(uuids)
         legacy.forEach { player -> VanillaNetworking.adapter.sendLegacy(player, packet) }
+    }
+
+    /** Pushes the speaker registry to [players] (v2 peers only; v1 has no speaker support), filtered to each player's world. */
+    fun sendSpeakers(players: List<ServerPlayer>) {
+        players.filter { V2PlayerTracker.isV2(it.uuid) }.forEach { player ->
+            val entries = com.dreamdisplays.platform.server.managers.SpeakerManager.list()
+                .filter { it.world == RegionUtil.getPlayerLevelKey(player) }
+                .map { it.toPacket() }
+            VanillaNetworking.adapter.sendV2(listOf(player), com.dreamdisplays.core.protocol.SpeakerList(entries))
+        }
     }
 
     /** Maps a [Direction] to its wire [FacingUtil]; faces not in the protocol fall back to north. */

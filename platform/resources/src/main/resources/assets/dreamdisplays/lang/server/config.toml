@@ -102,3 +102,4 @@ create_bypass = "dreamdisplays.create.bypass"       # Default: operator
 fullscreen_start = "dreamdisplays.fullscreen.start" # Default: operator
 fullscreen_stop = "dreamdisplays.fullscreen.stop"   # Default: operator
 fullscreen_list = "dreamdisplays.fullscreen.list"   # Default: operator
+speaker = "dreamdisplays.speaker"                   # Default: operator

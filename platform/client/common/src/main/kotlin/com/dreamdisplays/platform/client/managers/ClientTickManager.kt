@@ -10,6 +10,7 @@ import com.dreamdisplays.platform.client.core.ClientLifecycleEvent
 import com.dreamdisplays.platform.client.core.DreamServices
 import com.dreamdisplays.platform.client.displays.DisplayRegistry
 import com.dreamdisplays.platform.client.displays.DisplayScreen
+import com.dreamdisplays.platform.client.displays.SpeakerRegistry
 import com.dreamdisplays.platform.client.input.*
 import com.dreamdisplays.platform.client.overlay.OverlayManager
 import com.dreamdisplays.platform.client.ui.FullscreenOverlayManager
@@ -68,6 +69,7 @@ object ClientTickManager {
             if (level !== lastLevel) {
                 lastLevel = level
                 DisplayRegistry.unloadAll()
+                SpeakerRegistry.clear()
                 DreamServices.registry.getOrNull<OverlayManager>()?.closeAll()
                 FullscreenOverlayManager.closeAll()
                 hoveredDisplayScreen = null
@@ -78,6 +80,7 @@ object ClientTickManager {
             if (wasInMultiplayer) {
                 wasInMultiplayer = false
                 DisplayRegistry.unloadAll()
+                SpeakerRegistry.clear()
                 DreamServices.registry.getOrNull<OverlayManager>()?.closeAll()
                 FullscreenOverlayManager.closeAll()
                 hoveredDisplayScreen = null

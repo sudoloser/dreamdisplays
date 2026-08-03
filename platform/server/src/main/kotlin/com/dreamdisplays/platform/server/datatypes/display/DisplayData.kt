@@ -50,6 +50,12 @@ interface DisplayData {
 
     /** Max video height clients must not exceed (0 = uncapped, 360 for [PlaybackMode.BROADCAST]). */
     val qualityCap: Int; get() = if (mode == PlaybackMode.BROADCAST) PlaybackPermissions.BROADCAST_QUALITY_CAP else 0
+
+    /** UUIDs of the speakers this display routes its audio through (max [com.dreamdisplays.platform.server.managers.SpeakerManager.MAX_SPEAKERS_PER_DISPLAY]). */
+    var speakers: List<UUID>
+
+    /** True when the display's audio is hard-muted for listeners outside its speakers' rooms. */
+    var roomConfined: Boolean
 }
 
 /**
@@ -71,4 +77,10 @@ abstract class BaseDisplayData(override val virtual: Boolean = false) : DisplayD
 
     /** Duration of the video. */
     override var duration: Long? = null
+
+    /** UUIDs of the speakers this display routes its audio through. */
+    override var speakers: List<UUID> = emptyList()
+
+    /** True when the display's audio is hard-muted for listeners outside its speakers' rooms. */
+    override var roomConfined: Boolean = false
 }

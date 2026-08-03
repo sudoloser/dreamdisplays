@@ -87,6 +87,8 @@ data class DisplayInfo(
     @ProtoNumber(15) val rotation: Int = 0,
     @ProtoNumber(16) val virtual: Boolean = false,
     @ProtoNumber(17) val forced: Boolean = false,
+    @ProtoNumber(18) val speakerIds: List<@Serializable(UuidSerializer::class) UUID> = emptyList(),
+    @ProtoNumber(19) val roomConfined: Boolean = false,
 ) : DreamPacket
 
 /** Removes a display (server broadcast) or requests its deletion (client action). */
@@ -285,4 +287,40 @@ data class RadiusPreview(
 data class ReportDuration(
     @ProtoNumber(1) val id: @Serializable(UuidSerializer::class) UUID = ZERO_UUID,
     @ProtoNumber(2) val durationMs: Long = 0,
+) : DreamPacket
+
+/** One registered speaker: a named sound-source point in a world. */
+@Serializable
+data class SpeakerInfo(
+    @ProtoNumber(1) val id: @Serializable(UuidSerializer::class) UUID = ZERO_UUID,
+    @ProtoNumber(2) val name: String = "",
+    @ProtoNumber(3) val world: String = "",
+    @ProtoNumber(4) @ProtoType(ProtoIntegerType.SIGNED) val x: Int = 0,
+    @ProtoNumber(5) @ProtoType(ProtoIntegerType.SIGNED) val y: Int = 0,
+    @ProtoNumber(6) @ProtoType(ProtoIntegerType.SIGNED) val z: Int = 0,
+    @ProtoNumber(7) val radius: Float = 16f,
+)
+
+/** Server -> client snapshot of every registered speaker, sent on join and on any speaker change. */
+@Serializable
+data class SpeakerList(
+    @ProtoNumber(1) val speakers: List<SpeakerInfo> = emptyList(),
+) : DreamPacket
+
+/** Client binds or unbinds [speakerId] to a display it owns (at most 10 bound speakers per display). */
+@Serializable
+data class BindSpeaker(
+    @ProtoNumber(1) val id: @Serializable(UuidSerializer::class) UUID = ZERO_UUID,
+    @ProtoNumber(2) val speakerId: @Serializable(UuidSerializer::class) UUID = ZERO_UUID,
+    @ProtoNumber(3) val bind: Boolean = true,
+) : DreamPacket
+
+/**
+ * Client toggles a display's room confinement: when enabled, the display's audio is hard-muted
+ * for any listener outside the union of the display's speaker rooms (no wall bleed).
+ */
+@Serializable
+data class SetRoomConfined(
+    @ProtoNumber(1) val id: @Serializable(UuidSerializer::class) UUID = ZERO_UUID,
+    @ProtoNumber(2) val enabled: Boolean = false,
 ) : DreamPacket

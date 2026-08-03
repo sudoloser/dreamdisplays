@@ -10,6 +10,7 @@ import com.dreamdisplays.platform.server.datatypes.display.PaperDisplayData
 import com.dreamdisplays.platform.server.managers.ActionThrottle
 import com.dreamdisplays.platform.server.managers.DisplayManager
 import com.dreamdisplays.platform.server.managers.PlayerManager
+import com.dreamdisplays.platform.server.managers.SpeakerManager
 import com.dreamdisplays.platform.server.managers.StateManager
 import com.dreamdisplays.platform.server.meta.Scheduler
 import com.dreamdisplays.platform.server.meta.Scheduler.runAsync
@@ -97,6 +98,49 @@ object DisplayActions {
 
         displayData.isLocked = locked
 
+        runAsync { PaperServer.getInstance().storage.saveDisplay(displayData) }
+        DisplayManager.broadcastUpdate(displayData)
+    }
+
+    /** Binds [speakerId] to a display owned by [player] (at most [SpeakerManager.MAX_SPEAKERS_PER_DISPLAY]) and rebroadcasts. */
+    fun addSpeaker(player: Player, displayId: UUID, speakerId: UUID) {
+        val displayData = DisplayManager.getDisplayData(displayId) as? PaperDisplayData ?: return
+        if (!PlaybackPermissions.canToggleLock(lockContext(displayData, player))) return
+        val speaker = SpeakerManager.get(speakerId) ?: return MessageUtil.sendMessage(player, "speakerNotFound")
+        if (speakerId in displayData.speakers) return
+        if (displayData.speakers.size >= SpeakerManager.MAX_SPEAKERS_PER_DISPLAY) {
+            return MessageUtil.sendMessage(player, "displaySpeakerLimitReached")
+        }
+
+        displayData.speakers = displayData.speakers + speakerId
+        runAsync { PaperServer.getInstance().storage.saveDisplay(displayData) }
+        DisplayManager.broadcastUpdate(displayData)
+        MessageUtil.sendMessage(player, "speakerBound", speaker.name)
+    }
+
+    /** Unbinds [speakerId] from a display owned by [player] and rebroadcasts. */
+    fun removeSpeaker(player: Player, displayId: UUID, speakerId: UUID) {
+        val displayData = DisplayManager.getDisplayData(displayId) as? PaperDisplayData ?: return
+        if (!PlaybackPermissions.canToggleLock(lockContext(displayData, player))) return
+
+        displayData.speakers = displayData.speakers.filter { it != speakerId }
+        runAsync { PaperServer.getInstance().storage.saveDisplay(displayData) }
+        DisplayManager.broadcastUpdate(displayData)
+        MessageUtil.sendMessage(player, "speakerUnbound")
+    }
+
+    /** Toggles a display's room confinement (hard-mute outside its speakers' rooms) and rebroadcasts. */
+    fun setRoomConfined(player: Player, displayId: UUID, enabled: Boolean) {
+        val displayData = DisplayManager.getDisplayData(displayId) as? PaperDisplayData ?: return
+        if (!PlaybackPermissions.canToggleLock(lockContext(displayData, player))) return
+
+        displayData.roomConfined = enabled
+        runAsync { PaperServer.getInstance().storage.saveDisplay(displayData) }
+        DisplayManager.broadcastUpdate(displayData)
+    }
+
+    /** Persists [displayData] and rebroadcasts it, used by flows without a player context (speaker unbind). */
+    fun persistAndBroadcast(displayData: PaperDisplayData) {
         runAsync { PaperServer.getInstance().storage.saveDisplay(displayData) }
         DisplayManager.broadcastUpdate(displayData)
     }
@@ -213,6 +257,11 @@ object DisplayActions {
                 }
             }
         }
+    }
+
+    /** Pushes the current speaker registry to [players] (v2 peers only, filtered per world). */
+    fun sendSpeakers(players: List<Player>) {
+        PacketUtil.sendSpeakers(players)
     }
 
     /** Sends a single batch of display-info packets to [player] (protocol chosen per player). */

@@ -63,6 +63,7 @@ internal class AudioRenderChain(
     private val occlusionCutoff = ParamSmoother(OCCLUSION_SMOOTH_SECONDS, MAX_CUTOFF_HZ)
     private val occlusionGain = ParamSmoother(GAIN_SMOOTH_SECONDS, 1f)
     private val reverbWet = ParamSmoother(REVERB_SMOOTH_SECONDS, 0f)
+    private val roomGate = ParamSmoother(GAIN_SMOOTH_SECONDS, 1f)
 
     private var floatL = FloatArray(0)
     private var floatR = FloatArray(0)
@@ -143,6 +144,9 @@ internal class AudioRenderChain(
             reverb.updateParams((env.reverbDecaySeconds / REVERB_MAX_DECAY_SECONDS).coerceIn(0f, 1f), env.reverbDamping)
         }
 
+        val roomGateTarget = if (st.roomConfined && st.rooms.isNotEmpty() && !inAnyRoom(st, listenerPos)) 0f else 1f
+        val roomGain = roomGate.next(roomGateTarget, dtBlock)
+
         val dtSample = 1f / sampleRate
         for (i in 0 until frames) {
             val rawL = floatL[i];
@@ -171,8 +175,8 @@ internal class AudioRenderChain(
                     outL = limiter.lastL
                     outR = limiter.lastR
                 }
-                floatL[i] = outL
-                floatR[i] = outR
+                floatL[i] = outL * roomGain
+                floatR[i] = outR * roomGain
             } else {
                 leftPanner.pan(l, azL.toDouble())
                 rightPanner.pan(r, azR.toDouble())
@@ -190,8 +194,8 @@ internal class AudioRenderChain(
                     outL = limiter.lastL
                     outR = limiter.lastR
                 }
-                floatL[i] = outL
-                floatR[i] = outR
+                floatL[i] = outL * roomGain
+                floatR[i] = outR * roomGain
             }
         }
 
@@ -211,6 +215,7 @@ internal class AudioRenderChain(
         occlusionCutoff.snap(MAX_CUTOFF_HZ)
         occlusionGain.snap(1f)
         reverbWet.snap(0f)
+        roomGate.snap(1f)
     }
 
     private fun ensureCapacity(frames: Int) {
@@ -248,6 +253,15 @@ internal class AudioRenderChain(
         val rel = emitter - listenerPos
         return atan2(rel dot right, rel dot forward).toFloat()
     }
+
+    /** True if [listenerPos] lies within any of [st]'s rooms (3D sphere containment). */
+    private fun inAnyRoom(st: SourceAcousticState, listenerPos: Vec3): Boolean =
+        st.rooms.any { room ->
+            val dx = listenerPos.x - room.centerX
+            val dy = listenerPos.y - room.centerY
+            val dz = listenerPos.z - room.centerZ
+            (dx * dx + dy * dy + dz * dz) <= room.radius * room.radius
+        }
 
     /**
      * Exactly [MediaBufferEffects.applyVolumeS16LE]'s algorithm,

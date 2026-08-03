@@ -56,6 +56,7 @@ object ClientPacketManager {
             is FullscreenState -> FullscreenController.handle(packet)
             is DisplayDelete -> handleDelete(packet)
             is ClearCache -> handleClearCache(packet)
+            is SpeakerList -> SpeakerRegistry.update(packet.speakers)
             else -> logger.debug("Ignoring non-clientbound packet {}.", packet::class.simpleName)
         }
     }
@@ -99,5 +100,6 @@ object ClientPacketManager {
     fun reset() {
         serverSnapshot = ServerHello()
         FullscreenController.reset()
+        SpeakerRegistry.clear()
     }
 }

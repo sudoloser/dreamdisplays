@@ -33,7 +33,10 @@ enum class ProtocolPacketType(
     FULLSCREEN_ACK(18, FullscreenAck::class, PacketDirection.CLIENT_TO_SERVER),
     RADIUS_PREVIEW(19, RadiusPreview::class, PacketDirection.SERVER_TO_CLIENT),
     PIP_PIN(20, PipPin::class, PacketDirection.CLIENT_TO_SERVER),
-    REPORT_DURATION(21, ReportDuration::class, PacketDirection.CLIENT_TO_SERVER);
+    REPORT_DURATION(21, ReportDuration::class, PacketDirection.CLIENT_TO_SERVER),
+    SPEAKER_LIST(22, SpeakerList::class, PacketDirection.SERVER_TO_CLIENT),
+    BIND_SPEAKER(23, BindSpeaker::class, PacketDirection.CLIENT_TO_SERVER),
+    SET_ROOM_CONFINED(24, SetRoomConfined::class, PacketDirection.CLIENT_TO_SERVER);
 
     companion object {
         private val byId = entries.associateBy { it.id }

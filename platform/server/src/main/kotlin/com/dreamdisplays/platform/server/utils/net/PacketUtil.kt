@@ -68,6 +68,8 @@ object PacketUtil {
         rotation: ContentRotation = ContentRotation.NONE,
         virtual: Boolean = false,
         forced: Boolean = false,
+        speakerIds: List<UUID> = emptyList(),
+        roomConfined: Boolean = false,
     ) {
         val isVertical = facing == BlockFace.UP || facing == BlockFace.DOWN
         val recipients = if (isVertical) players.filterNotNull().filter { supportsVertical(it.uniqueId) } else players
@@ -83,6 +85,7 @@ object PacketUtil {
                 mode = mode.wire, qualityCap = qualityCap,
                 rotation = rotation.quarterTurns,
                 virtual = virtual, forced = forced,
+                speakerIds = speakerIds, roomConfined = roomConfined,
             ),
         )
         if (players.isEmpty()) return
@@ -194,6 +197,18 @@ object PacketUtil {
         }.onFailure { e ->
             logger.warn("Failed to send clear cache packet", e)
         }
+    }
+
+    /** Pushes the speaker registry to [players] (v2 peers only; v1 has no speaker support), filtered to each player's world. */
+    fun sendSpeakers(players: List<Player?>) {
+        players.filterNotNull()
+            .filter { V2PlayerTracker.isV2(it.uniqueId) }
+            .forEach { player ->
+                val entries = com.dreamdisplays.platform.server.managers.SpeakerManager.list()
+                    .filter { it.world == player.world.name }
+                    .map { it.toPacket() }
+                PaperV2Networking.send(listOf(player), com.dreamdisplays.core.protocol.SpeakerList(entries))
+            }
     }
 
     /** Splits the recipients into (v2-negotiated, legacy) lists. */

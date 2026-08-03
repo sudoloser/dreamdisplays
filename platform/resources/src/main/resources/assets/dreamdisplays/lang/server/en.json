@@ -177,5 +177,14 @@
   "fullscreenListEntry": "&7D |&7 {0} &8| &7display=&f{1} &8| &7virtual=&f{2} &8| &7reach=&f{3}",
   "customMediaDisabled": "&7D |&f Custom video links are disabled on this server",
   "customMediaHostBlocked": "&7D |&f Videos from this site are not allowed on this server",
-  "customMediaNoPermission": "&7D |&f You don't have permission to play your own video links"
+  "customMediaNoPermission": "&7D |&f You don't have permission to play your own video links",
+  "speakerCreated": "&7D |&f Speaker {0} created (id: {1})",
+  "speakerDeleted": "&7D |&f Speaker {0} deleted and unbound from all displays",
+  "speakerNotFound": "&7D |&f No speaker found for that id or name",
+  "speakerBound": "&7D |&f Speaker {0} bound to the display",
+  "speakerUnbound": "&7D |&f Speaker unbound from the display",
+  "speakerListEmpty": "&7D |&f No speakers registered",
+  "speakerListEntry": "&7D |&7 {0} &8| &7name=&f{1} &8| &7world=&f{2} &8| &7pos=&f[{3}, {4}, {5}]",
+  "displaySpeakerLimitReached": "&7D |&f This display already has the maximum number of speakers (10)",
+  "displayHelpSpeaker": "– /display speaker create [name] [radius]: register a speaker at your position"
 }

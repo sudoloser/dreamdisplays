@@ -94,6 +94,14 @@ object PaperV2Networking : PluginMessageListener {
                 PipPinManager.unpin(player.uniqueId, packet.id)
             }
 
+            is BindSpeaker -> if (packet.bind) {
+                DisplayActions.addSpeaker(player, packet.id, packet.speakerId)
+            } else {
+                DisplayActions.removeSpeaker(player, packet.id, packet.speakerId)
+            }
+
+            is SetRoomConfined -> DisplayActions.setRoomConfined(player, packet.id, packet.enabled)
+
             else -> logger.debug("Ignoring non-serverbound v2 packet {}.", packet::class.simpleName)
         }
     }
@@ -111,6 +119,7 @@ object PaperV2Networking : PluginMessageListener {
         send(listOf(player), buildServerHello(player))
         DisplayActions.recordVersionAndCheckUpdates(player, hello.modVersion)
         DisplayActions.sendAllDisplays(player)
+        sendSpeakers(listOf(player))
         FullscreenBroadcastManager.onPlayerJoin(player.uniqueId)
         PipPinManager.onPlayerJoin(player.uniqueId)
     }

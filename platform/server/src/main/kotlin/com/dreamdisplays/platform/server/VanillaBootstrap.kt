@@ -1,6 +1,7 @@
 package com.dreamdisplays.platform.server
 
 import com.dreamdisplays.platform.server.managers.DisplayManager
+import com.dreamdisplays.platform.server.managers.SpeakerManager
 import com.dreamdisplays.platform.server.managers.StateManager
 import com.dreamdisplays.platform.server.managers.StorageManager
 import com.dreamdisplays.platform.server.meta.ServerCoroutines
@@ -32,6 +33,7 @@ object VanillaBootstrap {
         VanillaServerState.storage = storage
         storage.createSchema()
         DisplayManager.register(storage.loadAllVanillaDisplays())
+        SpeakerManager.loadFromDisk()
         VanillaPlaybackTransport.bind(server)
         WatchPartyManager.init(VanillaPlaybackTransport)
         TimelineManager.init(VanillaPlaybackTransport)

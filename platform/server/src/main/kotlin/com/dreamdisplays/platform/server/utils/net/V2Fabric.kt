@@ -91,6 +91,14 @@ object FabricV2Networking {
                 PipPinManager.unpin(player.uuid, packet.id)
             }
 
+            is BindSpeaker -> if (packet.bind) {
+                VanillaDisplayActions.addSpeaker(player, server, packet.id, packet.speakerId)
+            } else {
+                VanillaDisplayActions.removeSpeaker(player, server, packet.id, packet.speakerId)
+            }
+
+            is SetRoomConfined -> VanillaDisplayActions.setRoomConfined(player, server, packet.id, packet.enabled)
+
             else -> logger.debug("Ignoring non-serverbound v2 packet {}.", packet::class.simpleName)
         }
     }
