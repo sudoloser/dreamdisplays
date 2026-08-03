@@ -6,6 +6,7 @@ import com.dreamdisplays.core.protocol.DisplayInfo
 import com.dreamdisplays.core.protocol.SetDisplaysEnabled
 import com.dreamdisplays.platform.client.net.Packets
 import com.dreamdisplays.platform.server.datatypes.display.VanillaDisplayData
+import com.dreamdisplays.platform.server.datatypes.display.toPacket
 import com.dreamdisplays.platform.server.datatypes.sync.SyncData
 import com.dreamdisplays.platform.server.playback.TimelineManager
 import com.dreamdisplays.platform.server.utils.RegionUtil

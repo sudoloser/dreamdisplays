@@ -124,6 +124,7 @@ object FabricV2Networking {
         )
         VanillaDisplayActions.recordVersionAndCheckUpdates(player, hello.modVersion)
         VanillaDisplayActions.sendAllDisplays(player, server)
+        VanillaPacketUtil.sendSpeakers(listOf(player))
         FullscreenBroadcastManager.onPlayerJoin(player.uuid)
         PipPinManager.onPlayerJoin(player.uuid)
     }

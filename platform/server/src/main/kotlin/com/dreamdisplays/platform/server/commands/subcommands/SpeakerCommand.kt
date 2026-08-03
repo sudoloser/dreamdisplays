@@ -110,11 +110,11 @@ object VanillaSpeakerCommand {
         }
         val speaker = SpeakerData(
             id = UUID.randomUUID(),
-            name = name?.takeIf { it.isNotBlank() } ?: "speaker-${player.blockX()}-${player.blockY()}-${player.blockZ()}",
+            name = name?.takeIf { it.isNotBlank() } ?: "speaker-${player.blockPosition().x}-${player.blockPosition().y}-${player.blockPosition().z}",
             world = RegionUtil.getPlayerLevelKey(player),
-            x = player.blockX(),
-            y = player.blockY(),
-            z = player.blockZ(),
+            x = player.blockPosition().x,
+            y = player.blockPosition().y,
+            z = player.blockPosition().z,
             radius = radius?.toFloat()?.coerceIn(1f, 256f) ?: 16f,
         )
         SpeakerManager.register(speaker)

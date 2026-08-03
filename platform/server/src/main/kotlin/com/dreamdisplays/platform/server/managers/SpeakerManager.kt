@@ -55,8 +55,6 @@ object SpeakerManager {
         val trimmed = token.trim()
         if (trimmed.isEmpty()) return null
 
-        speakers[trimmed.lowercase(Locale.ROOT)]?.let { return it }
-
         val matches = list().filter {
             it.name.equals(trimmed, ignoreCase = true) ||
                     it.id.toString().equals(trimmed, ignoreCase = true) ||

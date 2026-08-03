@@ -119,7 +119,7 @@ object PaperV2Networking : PluginMessageListener {
         send(listOf(player), buildServerHello(player))
         DisplayActions.recordVersionAndCheckUpdates(player, hello.modVersion)
         DisplayActions.sendAllDisplays(player)
-        sendSpeakers(listOf(player))
+        DisplayActions.sendSpeakers(listOf(player))
         FullscreenBroadcastManager.onPlayerJoin(player.uniqueId)
         PipPinManager.onPlayerJoin(player.uniqueId)
     }

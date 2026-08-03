@@ -150,7 +150,7 @@ object NeoForgeV2Networking {
         )
         VanillaDisplayActions.recordVersionAndCheckUpdates(player, hello.modVersion)
         VanillaDisplayActions.sendAllDisplays(player, server)
-        sendSpeakers(listOf(player))
+        VanillaPacketUtil.sendSpeakers(listOf(player))
         FullscreenBroadcastManager.onPlayerJoin(player.uuid)
         PipPinManager.onPlayerJoin(player.uuid)
     }
