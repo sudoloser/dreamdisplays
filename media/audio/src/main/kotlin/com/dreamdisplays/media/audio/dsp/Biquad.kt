@@ -59,6 +59,28 @@ class Biquad {
         a1 = (a1d / a0d).toFloat(); a2 = (a2d / a0d).toFloat()
     }
 
+    /** Recomputes coefficients for a Peaking EQ filter at [freqHz] with gain [gainDb] and quality factor [q]. */
+    fun setPeakingEQ(sampleRate: Float, freqHz: Float, q: Float, gainDb: Float) {
+        val w0 = 2.0 * PI * (freqHz / sampleRate).coerceIn(0.0001f, 0.499f)
+        val cosW0 = cos(w0)
+        val sinW0 = sin(w0)
+        val alpha = sinW0 / (2.0 * q)
+        val a = Math.pow(10.0, gainDb / 40.0)
+
+        val b0d = 1.0 + alpha * a
+        val b1d = -2.0 * cosW0
+        val b2d = 1.0 - alpha * a
+        val a0d = 1.0 + alpha / a
+        val a1d = -2.0 * cosW0
+        val a2d = 1.0 - alpha / a
+
+        b0 = (b0d / a0d).toFloat()
+        b1 = (b1d / a0d).toFloat()
+        b2 = (b2d / a0d).toFloat()
+        a1 = (a1d / a0d).toFloat()
+        a2 = (a2d / a0d).toFloat()
+    }
+
     /** Filters one sample, updating internal state. */
     fun process(x: Float): Float {
         val y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2

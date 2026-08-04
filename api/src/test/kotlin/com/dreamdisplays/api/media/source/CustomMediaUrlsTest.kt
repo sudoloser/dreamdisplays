@@ -143,6 +143,13 @@ class CustomMediaUrlsTest {
     )
 
     @Test
+    fun mkvDirectUrlBecomesDirectStreamSource() {
+        val source = MediaSource.from("https://cdn.example.com/v.mkv")
+        assertTrue(source is MediaSource.DirectStream, "expected DirectStream, got $source")
+        assertEquals(CustomMediaKind.PROGRESSIVE, source.kind)
+    }
+
+    @Test
     fun cleanFileNameDropsExtensionAndSeparators() =
         assertEquals("my cool clip", CustomMediaUrls.cleanFileName("my_cool_clip.mp4"))
 }

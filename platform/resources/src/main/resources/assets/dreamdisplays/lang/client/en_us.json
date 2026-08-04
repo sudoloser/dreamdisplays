@@ -90,5 +90,13 @@
   "dreamdisplays.sort.watched": "Watched",
   "dreamdisplays.ui.custom": "Link",
   "dreamdisplays.sort.my_links": "My links",
-  "dreamdisplays.suggestions.no_links": "No saved links yet. Paste a video link above to play it."
+  "dreamdisplays.suggestions.no_links": "No saved links yet. Paste a video link above to play it.",
+  "key.dreamdisplays.open_menu": "Open Display Menu (Sneak + Click)",
+  "key.dreamdisplays.volume_up": "Display Volume Up (Shift + Up)",
+  "key.dreamdisplays.volume_down": "Display Volume Down (Shift + Down)",
+  "key.dreamdisplays.seek_forward": "Display Seek +10s (Shift + Right)",
+  "key.dreamdisplays.seek_backward": "Display Seek -10s (Shift + Left)",
+  "key.categories.dreamdisplays": "Dream Displays",
+  "dreamdisplays.ui.eq.title": "Graphic Equalizer",
+  "dreamdisplays.ui.visualizer.audio_only": "Audio Spectrum Visualizer"
 }

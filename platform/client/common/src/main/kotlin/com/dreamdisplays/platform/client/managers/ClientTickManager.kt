@@ -165,6 +165,50 @@ object ClientTickManager {
             )
         }
         wasPressed = pressed
+
+        // Looking-at-screen hotkeys (Shift + Up/Down for Volume, Shift + Left/Right for Seek 10s)
+        val player = minecraft.player
+        val targetScreen = hoveredDisplayScreen
+        if (player != null && player.isShiftKeyDown && targetScreen != null && minecraft.screen == null) {
+            val displayId = com.dreamdisplays.api.display.model.DisplayId(targetScreen.uuid)
+            val playback = DreamServices.registry.getOrNull<com.dreamdisplays.api.playback.PlaybackServices.PlaybackService>()
+            if (playback != null) {
+                if (isKeyPressed(window, GLFW.GLFW_KEY_UP, GLFW_KEY_UP_WAS)) {
+                    val newVol = (targetScreen.volume + 0.05).coerceAtMost(1.0)
+                    playback.setVolume(displayId, newVol)
+                }
+                if (isKeyPressed(window, GLFW.GLFW_KEY_DOWN, GLFW_KEY_DOWN_WAS)) {
+                    val newVol = (targetScreen.volume - 0.05).coerceAtLeast(0.0)
+                    playback.setVolume(displayId, newVol)
+                }
+                if (isKeyPressed(window, GLFW.GLFW_KEY_LEFT, GLFW_KEY_LEFT_WAS) && targetScreen.canSeek() && !targetScreen.isLive) {
+                    val targetMs = ((targetScreen.currentTimeNanos - 10_000_000_000L) / 1_000_000L).coerceAtLeast(0L)
+                    playback.seek(displayId, kotlin.time.Duration.Companion.milliseconds(targetMs))
+                }
+                if (isKeyPressed(window, GLFW.GLFW_KEY_RIGHT, GLFW_KEY_RIGHT_WAS) && targetScreen.canSeek() && !targetScreen.isLive) {
+                    val maxMs = targetScreen.mediaPlayerDurationNanos / 1_000_000L
+                    val targetMs = ((targetScreen.currentTimeNanos + 10_000_000_000L) / 1_000_000L).coerceAtMost(maxMs)
+                    playback.seek(displayId, kotlin.time.Duration.Companion.milliseconds(targetMs))
+                }
+            }
+        }
+    }
+
+    private var GLFW_KEY_UP_WAS = false
+    private var GLFW_KEY_DOWN_WAS = false
+    private var GLFW_KEY_LEFT_WAS = false
+    private var GLFW_KEY_RIGHT_WAS = false
+
+    private fun isKeyPressed(window: Long, key: Int, wasState: Boolean): Boolean {
+        val pressed = GLFW.glfwGetKey(window, key) == GLFW.GLFW_PRESS
+        val triggered = pressed && !wasState
+        when (key) {
+            GLFW.GLFW_KEY_UP -> GLFW_KEY_UP_WAS = pressed
+            GLFW.GLFW_KEY_DOWN -> GLFW_KEY_DOWN_WAS = pressed
+            GLFW.GLFW_KEY_LEFT -> GLFW_KEY_LEFT_WAS = pressed
+            GLFW.GLFW_KEY_RIGHT -> GLFW_KEY_RIGHT_WAS = pressed
+        }
+        return triggered
     }
 
     /** Frees a fully warm dormant display, keeping only its cheap replay snapshot for fast reappearance. */

@@ -50,6 +50,9 @@ object Initializer {
      */
     fun onServerJoined(serverId: String) {
         ClientStateManager.connectedServerId = serverId
+        val mc = Minecraft.getInstance()
+        val isLocal = serverId == "singleplayer" || mc.isLocalServer || mc.singleplayerServer != null
+        com.dreamdisplays.media.runtime.MediaHostGuard.isLocalHostSession = isLocal
         DisplayRegistry.loadScreensForServer(serverId)
         DreamServices.registry.getOrNull<ClientApplication>()
             ?.emit(ClientLifecycleEvent.ServerJoined(serverId))
@@ -60,6 +63,7 @@ object Initializer {
      * the per-server flags, and emits [ClientLifecycleEvent.ServerLeft].
      */
     fun onServerLeft() {
+        com.dreamdisplays.media.runtime.MediaHostGuard.isLocalHostSession = false
         val serverId = ClientStateManager.connectedServerId
         DisplayRegistry.saveAllScreens()
         DisplayRegistry.unloadAll()

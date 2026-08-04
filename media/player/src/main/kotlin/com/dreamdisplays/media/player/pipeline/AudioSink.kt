@@ -28,28 +28,28 @@ internal class AudioSink(private val debugLabel: String) {
         /** Stereo 16-bit PCM: 4 bytes per frame. One second is SAMPLE_RATE * BYTES_PER_FRAME bytes. */
         const val BYTES_PER_FRAME = 4
 
-        /** Chunk size for each read from the audio process and each write to the line. 1 / 20 s of stereo 16-bit PCM */
-        private const val CHUNK_BYTES = SAMPLE_RATE * 2 * 2 / 20
+        /** Chunk size for each read from the audio process and each write to the line. 1 / 50 s (~20 ms) of stereo 16-bit PCM */
+        private const val CHUNK_BYTES = SAMPLE_RATE * 2 * 2 / 50
 
         /**
-         * Capacity of the PCM line (8 chunks, ~0.4 s). This is only the ceiling the pacer may grow into,
+         * Capacity of the PCM line (16 chunks, ~0.32 s). This is only the ceiling the pacer may grow into,
          * not the steady-state latency: [paceLiveWrite] holds the *unplayed* backlog near
          * [paceTargetBytes] (well below this), so DSP-to-ear latency tracks the adaptive target, while the
          * spare capacity is headroom the target can expand into on a stuttering machine.
          */
-        private const val LINE_BUFFER_BYTES = CHUNK_BYTES * 8
+        private const val LINE_BUFFER_BYTES = CHUNK_BYTES * 16
 
-        /** Smallest backlog the live pacer holds (~0.05 s) — the floor it settles back to when playback is clean. */
+        /** Smallest backlog the live pacer holds (~0.02 s) — the floor it settles back to when playback is clean. */
         private const val MIN_PACE_BYTES = CHUNK_BYTES
 
         /** Largest backlog the pacer will grow to (~0.30 s) before it stops trading latency for stability. */
-        private const val MAX_PACE_BYTES = CHUNK_BYTES * 6
+        private const val MAX_PACE_BYTES = CHUNK_BYTES * 15
 
         /** Backlog step added per detected underrun / eased off per clean-playback window. */
         private const val PACE_STEP_BYTES = CHUNK_BYTES
 
-        /** Consecutive clean chunks (~20 s at 20 chunks/s) before the pacer eases the target back down one step. */
-        private const val PACE_RECOVER_CHUNKS = 400
+        /** Consecutive clean chunks (~20 s at 50 chunks/s) before the pacer eases the target back down one step. */
+        private const val PACE_RECOVER_CHUNKS = 1000
 
         /** Number of times to retry opening the audio line if it is temporarily unavailable. */
         private const val OPEN_RETRIES = 3
@@ -61,7 +61,7 @@ internal class AudioSink(private val debugLabel: String) {
         private const val PCM_RING_MAX_BYTES = SAMPLE_RATE * BYTES_PER_FRAME * 30
 
         /** Content gaps below this (~1 video frame) aren't worth a catch-up skip — inaudible as lip sync. */
-        private const val CATCHUP_MIN_NANOS = 40_000_000L
+        private const val CATCHUP_MIN_NANOS = 20_000_000L
 
         /** Max refine passes of the catch-up skip; each pass shrinks the residual by the decode-speed factor. */
         private const val CATCHUP_MAX_PASSES = 4

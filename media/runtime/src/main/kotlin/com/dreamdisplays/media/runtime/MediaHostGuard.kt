@@ -16,13 +16,17 @@ object MediaHostGuard {
     private val allowPrivate: Boolean =
         System.getProperty("dreamdisplays.allowPrivateUrls", "false").toBoolean()
 
+    /** Dynamic flag set when running in singleplayer or hosting a local server (LAN / Essential Mod). */
+    @Volatile
+    var isLocalHostSession: Boolean = false
+
     /**
-     * Returns true when [url] is safe to fetch: the guard is disabled, or the URL's host resolves
+     * Returns true when [url] is safe to fetch: the guard is disabled, local hosting is active, or the URL's host resolves
      * exclusively to public unicast addresses. Returns false on any non-public address or when the
      * host cannot be parsed or resolved.
      */
     fun isAllowed(url: String): Boolean {
-        if (allowPrivate) return true
+        if (allowPrivate || isLocalHostSession) return true
         val host = hostOf(url) ?: run {
             logger.warn("Blocked media URL with no parseable host: ${url.take(120)}")
             return false

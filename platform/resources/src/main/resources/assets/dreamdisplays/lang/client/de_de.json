@@ -84,5 +84,13 @@
   "dreamdisplays.suggestions.unavailable": "Vorschläge nicht verfügbar.",
   "dreamdisplays.ui.custom": "Link",
   "dreamdisplays.sort.my_links": "Meine Links",
-  "dreamdisplays.suggestions.no_links": "Noch keine gespeicherten Links. Füge oben einen Videolink ein, um ihn abzuspielen."
+  "dreamdisplays.suggestions.no_links": "Noch keine gespeicherten Links. Füge oben einen Videolink ein, um ihn abzuspielen.",
+  "key.dreamdisplays.open_menu": "Anzeigemenü öffnen (Schleichen + Klick)",
+  "key.dreamdisplays.volume_up": "Lautstärke erhöhen (Shift + Hoch)",
+  "key.dreamdisplays.volume_down": "Lautstärke verringern (Shift + Runter)",
+  "key.dreamdisplays.seek_forward": "Anzeige +10s vorspulen (Shift + Rechts)",
+  "key.dreamdisplays.seek_backward": "Anzeige -10s zurückspulen (Shift + Links)",
+  "key.categories.dreamdisplays": "Dream Displays",
+  "dreamdisplays.ui.eq.title": "Grafischer Equalizer",
+  "dreamdisplays.ui.visualizer.audio_only": "Audio-Spektrum-Visualizer"
 }

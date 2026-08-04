@@ -90,5 +90,13 @@
   "dreamdisplays.sort.watched": "Просмотрено",
   "dreamdisplays.ui.custom": "Ссылка",
   "dreamdisplays.sort.my_links": "Мои ссылки",
-  "dreamdisplays.suggestions.no_links": "Сохранённых ссылок пока нет. Вставьте ссылку на видео выше, чтобы включить его."
+  "dreamdisplays.suggestions.no_links": "Сохранённых ссылок пока нет. Вставьте ссылку на видео выше, чтобы включить его.",
+  "key.dreamdisplays.open_menu": "Открыть меню дисплея (Присесть + Клик)",
+  "key.dreamdisplays.volume_up": "Увеличить громкость дисплея (Shift + Вверх)",
+  "key.dreamdisplays.volume_down": "Уменьшить громкость дисплея (Shift + Вниз)",
+  "key.dreamdisplays.seek_forward": "Перемотка +10с (Shift + Вправо)",
+  "key.dreamdisplays.seek_backward": "Перемотка -10с (Shift + Влево)",
+  "key.categories.dreamdisplays": "Dream Displays",
+  "dreamdisplays.ui.eq.title": "Графический эквалайзер",
+  "dreamdisplays.ui.visualizer.audio_only": "Визуализатор аудиоспектра"
 }

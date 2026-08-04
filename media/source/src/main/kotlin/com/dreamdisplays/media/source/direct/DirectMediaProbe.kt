@@ -148,7 +148,7 @@ internal object DirectMediaProbe {
         return when {
             ascii(4, 4) == "ftyp" -> "video/mp4"                                            // ISO-BMFF (mp4 / mov / m4v)
             bytes[0] == 0x1A.toByte() && bytes[1] == 0x45.toByte() &&
-                    bytes[2] == 0xDF.toByte() && bytes[3] == 0xA3.toByte() -> "video/webm"  // Matroska / WebM (EBML)
+                    bytes[2] == 0xDF.toByte() && bytes[3] == 0xA3.toByte() -> "video/x-matroska" // Matroska / WebM (EBML)
             ascii(0, 3) == "FLV" -> "video/x-flv"
             ascii(0, 4) == "OggS" -> "video/ogg"
             ascii(0, 7) == "#EXTM3U" -> "application/vnd.apple.mpegurl"                     // HLS playlist
