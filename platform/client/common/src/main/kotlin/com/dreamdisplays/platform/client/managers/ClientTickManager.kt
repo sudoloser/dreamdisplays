@@ -175,11 +175,11 @@ object ClientTickManager {
             val playback = DreamServices.registry.getOrNull(PlaybackServices.PLAYBACK)
             if (playback != null) {
                 if (isKeyPressed(window, GLFW.GLFW_KEY_UP, GLFW_KEY_UP_WAS)) {
-                    val newVol = (targetScreen.volume + 0.05).coerceAtMost(1.0)
+                    val newVol = (targetScreen.volume + 0.05f).coerceAtMost(1.0f)
                     playback.setVolume(displayId, newVol)
                 }
                 if (isKeyPressed(window, GLFW.GLFW_KEY_DOWN, GLFW_KEY_DOWN_WAS)) {
-                    val newVol = (targetScreen.volume - 0.05).coerceAtLeast(0.0)
+                    val newVol = (targetScreen.volume - 0.05f).coerceAtLeast(0.0f)
                     playback.setVolume(displayId, newVol)
                 }
                 if (isKeyPressed(window, GLFW.GLFW_KEY_LEFT, GLFW_KEY_LEFT_WAS) && targetScreen.canSeek() && !targetScreen.isLive) {
