@@ -2,6 +2,7 @@ package com.dreamdisplays.platform.client.managers
 
 import com.dreamdisplays.api.display.model.DisplayId
 import com.dreamdisplays.api.media.audio.AudioAcousticsServices
+import com.dreamdisplays.api.playback.PlaybackServices
 import com.dreamdisplays.api.runtime.getOrNull
 import com.dreamdisplays.platform.client.audio.ListenerPoseTracker
 import com.dreamdisplays.platform.client.capabilities.CapabilityNegotiationService
@@ -17,6 +18,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.multiplayer.ClientLevel
 import org.lwjgl.glfw.GLFW
 import java.util.*
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Handles per-tick client display state: level changes, hover, unloading, and shortcuts.
@@ -166,12 +168,11 @@ object ClientTickManager {
         }
         wasPressed = pressed
 
-        // Looking-at-screen hotkeys (Shift + Up/Down for Volume, Shift + Left/Right for Seek 10s)
-        val player = minecraft.player
+        // Looking at-screen hotkeys (Shift + Up/Down for Volume, Shift + Left/Right for Seek 10s)
         val targetScreen = hoveredDisplayScreen
-        if (player != null && player.isShiftKeyDown && targetScreen != null && minecraft.screen == null) {
-            val displayId = com.dreamdisplays.api.display.model.DisplayId(targetScreen.uuid)
-            val playback = DreamServices.registry.getOrNull<com.dreamdisplays.api.playback.PlaybackServices.PlaybackService>()
+        if (targetScreen != null && player.isShiftKeyDown && minecraft.screen == null) {
+            val displayId = DisplayId(targetScreen.uuid)
+            val playback = DreamServices.registry.getOrNull(PlaybackServices.PLAYBACK)
             if (playback != null) {
                 if (isKeyPressed(window, GLFW.GLFW_KEY_UP, GLFW_KEY_UP_WAS)) {
                     val newVol = (targetScreen.volume + 0.05).coerceAtMost(1.0)
@@ -183,12 +184,12 @@ object ClientTickManager {
                 }
                 if (isKeyPressed(window, GLFW.GLFW_KEY_LEFT, GLFW_KEY_LEFT_WAS) && targetScreen.canSeek() && !targetScreen.isLive) {
                     val targetMs = ((targetScreen.currentTimeNanos - 10_000_000_000L) / 1_000_000L).coerceAtLeast(0L)
-                    playback.seek(displayId, kotlin.time.Duration.Companion.milliseconds(targetMs))
+                    playback.seek(displayId, targetMs.milliseconds)
                 }
                 if (isKeyPressed(window, GLFW.GLFW_KEY_RIGHT, GLFW_KEY_RIGHT_WAS) && targetScreen.canSeek() && !targetScreen.isLive) {
                     val maxMs = targetScreen.mediaPlayerDurationNanos / 1_000_000L
                     val targetMs = ((targetScreen.currentTimeNanos + 10_000_000_000L) / 1_000_000L).coerceAtMost(maxMs)
-                    playback.seek(displayId, kotlin.time.Duration.Companion.milliseconds(targetMs))
+                    playback.seek(displayId, targetMs.milliseconds)
                 }
             }
         }
