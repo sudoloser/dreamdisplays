@@ -19,7 +19,7 @@ kotlinxSerialization = "1.11.0"
 kotlinxCoroutines = "1.11.0"
 kotlinxIo = "0.9.1"
 paperweight = "2.0.0-beta.21"
-newpipeExtractor = "7edf1c5f68e177b3ec98d2a0c7b50503a67ba385"
+newpipeExtractor = "v0.26.4"
 slf4j = "2.0.18"
 luckperms = "5.5"
 
