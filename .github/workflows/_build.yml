@@ -522,7 +522,7 @@ jobs:
             --release \
             --package dreamdisplays-native \
             --package dreamdisplays-lav \
-            "${no_run[@]}" \
+            ${no_run[@]+"${no_run[@]}"} \
             --locked \
             --target "${{ matrix.native.target }}"
 
