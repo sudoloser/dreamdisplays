@@ -25,10 +25,11 @@ Android NDK (`r27c`). The bundle for those platforms contains:
 - `libdreamdisplays_native.so` — the full native pipeline kernel, no FFmpeg link dependency
 - `libdreamdisplays_lav.so` — the in-process libav decode backend, linked against the bundled
   FFmpeg shared libraries
-- `libavutil.so.60`, `libswresample.so.6`, `libswscale.so.9`, `libavcodec.so.62`,
-  `libavformat.so.62` — FFmpeg 8.1 cross-compiled for the matching ABI (SONAME files; the
-  `ffmpeg-shared.txt` manifest lists them for the runtime extractor). 32-bit x86 disables asm
-  because its text relocations are rejected by modern Android; the other ABIs keep SIMD enabled.
+- `libavutil.so`, `libswresample.so`, `libswscale.so`, `libavcodec.so`, `libavformat.so` — FFmpeg
+  8.1 cross-compiled for the matching ABI (FFmpeg installs these without version suffixes on
+  Android, matching the DT_NEEDED entries of `dreamdisplays_lav`; the `ffmpeg-shared.txt` manifest
+  lists them for the runtime extractor). 32-bit x86 disables asm because its text relocations are
+  rejected by modern Android; the other ABIs keep SIMD enabled.
 - `libsqlitejdbc.so` — a prebuilt `sqlite-jdbc` native for the matching ABI (pulled from the last
   `sqlite-jdbc` release that still shipped Android binaries, `3.51.3.0`), since `sqlite-jdbc` 3.5x
   dropped its own `Linux-Android` natives

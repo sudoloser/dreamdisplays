@@ -124,13 +124,13 @@ object LavFfmpeg {
         return ANDROID_FFMPEG_FALLBACK_LIBRARIES
     }
 
-    /** FFmpeg 8.1 SONAMEs: avutil 60, swresample 6, swscale 9, avcodec 62, avformat 62. */
+    /** FFmpeg installs unversioned shared libs on Android (the DT_NEEDED SONAMEs of `dreamdisplays_lav`). */
     private val ANDROID_FFMPEG_FALLBACK_LIBRARIES = listOf(
-        "libavutil.so.60",
-        "libswresample.so.6",
-        "libswscale.so.9",
-        "libavcodec.so.62",
-        "libavformat.so.62",
+        "libavutil.so",
+        "libswresample.so",
+        "libswscale.so",
+        "libavcodec.so",
+        "libavformat.so",
     )
 
     /** Resolves the prebuilt shared build for this platform, or null when none is available. */

@@ -578,13 +578,14 @@ jobs:
               > "$out/libsqlitejdbc.so"
 
             # Bundle the FFmpeg shared libraries built in the "Build FFmpeg for Android" step.
-            # Keep only the SONAME-style files (libX.so.<major>) that `dreamdisplays_lav`
-            # records as DT_NEEDED; skip the fully-versioned originals. The manifest tells the
-            # runtime extractor (LavFfmpeg) exactly which files to unpack from the jar.
+            # FFmpeg's configure installs unversioned .so files on Android (SLIB_INSTALL_NAME
+            # is '$(SLIBNAME)'), which are exactly the DT_NEEDED entries of `dreamdisplays_lav`.
+            # Keep only the five libraries it links (avutil/swresample/swscale/avcodec/avformat);
+            # the manifest tells the runtime extractor (LavFfmpeg) which files to unpack.
             ffmpeg_libs=()
-            for lib in "$ffmpeg_dir"/lib/lib*.so.*; do
+            for lib in "$ffmpeg_dir"/lib/lib*.so; do
               base="$(basename "$lib")"
-              if [[ "$base" =~ ^lib(av|sw)[a-z0-9]+\.so\.[0-9]+$ ]]; then
+              if [[ "$base" =~ ^(libavutil|libswresample|libswscale|libavcodec|libavformat)\.so$ ]]; then
                 cp -L "$lib" "$out/$base"
                 ffmpeg_libs+=("$base")
               fi
@@ -686,9 +687,9 @@ jobs:
           if [[ "$is_android" -eq 1 ]]; then
             test -s "$out/libsqlitejdbc.so"
             test -s "$out/ffmpeg-shared.txt"
-            grep -q '^libavcodec\.so\.[0-9]\+$' "$out/ffmpeg-shared.txt"
-            grep -q '^libavformat\.so\.[0-9]\+$' "$out/ffmpeg-shared.txt"
-            grep -q '^libavutil\.so\.[0-9]\+$' "$out/ffmpeg-shared.txt"
+            grep -q '^libavcodec\.so$' "$out/ffmpeg-shared.txt"
+            grep -q '^libavformat\.so$' "$out/ffmpeg-shared.txt"
+            grep -q '^libavutil\.so$' "$out/ffmpeg-shared.txt"
             test -s "$out/licenses/ffmpeg-license.txt"
           else
             test -s "$out/licenses/ffmpeg-license.txt"
@@ -834,14 +835,15 @@ jobs:
           version = "${{ needs.metadata.outputs.version }}"
           platforms = os.environ["REQUIRED_NATIVE_PLATFORMS"].split()
           ffmpeg_components = ("avutil", "swresample", "swscale", "avcodec", "avformat", "avfilter", "avdevice")
-          # FFmpeg 8.1 SONAME files bundled with the Android ABIs (kept in sync with the
-          # "Build FFmpeg for Android" step and `LavFfmpeg`).
+          # FFmpeg shared libraries bundled with the Android ABIs (kept in sync with the
+          # "Build FFmpeg for Android" step and `LavFfmpeg`). FFmpeg installs them without
+          # version suffixes on Android, matching the DT_NEEDED entries of `dreamdisplays_lav`.
           android_ffmpeg_libs = (
-              "libavutil.so.60",
-              "libswresample.so.6",
-              "libswscale.so.9",
-              "libavcodec.so.62",
-              "libavformat.so.62",
+              "libavutil.so",
+              "libswresample.so",
+              "libswscale.so",
+              "libavcodec.so",
+              "libavformat.so",
           )
 
           def native_name(platform: str) -> str:
