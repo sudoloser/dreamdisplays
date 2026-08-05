@@ -14,6 +14,7 @@ import com.dreamdisplays.platform.client.displays.DisplayScreen
 import com.dreamdisplays.platform.client.input.*
 import com.dreamdisplays.platform.client.overlay.OverlayManager
 import com.dreamdisplays.platform.client.ui.FullscreenOverlayManager
+import com.dreamdisplays.platform.client.utils.MinecraftScreenUtil
 import net.minecraft.client.Minecraft
 import net.minecraft.client.multiplayer.ClientLevel
 import org.lwjgl.glfw.GLFW
@@ -170,7 +171,7 @@ object ClientTickManager {
 
         // Looking at-screen hotkeys (Shift + Up/Down for Volume, Shift + Left/Right for Seek 10s)
         val targetScreen = hoveredDisplayScreen
-        if (targetScreen != null && player.isShiftKeyDown && minecraft.screen == null) {
+        if (targetScreen != null && player.isShiftKeyDown && MinecraftScreenUtil.currentScreen(minecraft) == null) {
             val displayId = DisplayId(targetScreen.uuid)
             val playback = DreamServices.registry.getOrNull(PlaybackServices.PLAYBACK)
             if (playback != null) {
