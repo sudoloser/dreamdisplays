@@ -22,6 +22,9 @@ import java.util.zip.ZipInputStream
  * git revision, so URLs are resolved from the latest GitHub release at runtime.
  * macOS has no prebuilt shared build available, so it keeps relying on a system
  * (Homebrew) `FFmpeg`.
+ *
+ * Android has no prebuilt shared build to download, so the CI cross-compiles FFmpeg
+ * and bundles the SONAME libraries in the jar; [ensure] unpacks those instead.
  */
 object LavFfmpeg {
     private val logger = LoggerFactory.getLogger("DreamDisplays/LavFFmpeg")
@@ -47,6 +50,7 @@ object LavFfmpeg {
      */
     fun ensure(dir: File): Boolean {
         if (hasFfmpeg(dir)) return true
+        if (OsInfo.isAndroid) return extractBundledAndroidLibraries(dir)
         val source = source() ?: return false
         return runCatching {
             if (!dir.exists() && !dir.mkdirs()) throw IOException("Cannot create $dir.")
@@ -78,8 +82,60 @@ object LavFfmpeg {
     private fun isSharedLibrary(name: String): Boolean =
         name.endsWith(".dll") || name.endsWith(".dylib") || ".so" in name
 
+    /**
+     * Android bundles the FFmpeg shared libraries inside the jar next to `dreamdisplays_lav`
+     * (produced by the "Build FFmpeg for Android" CI step), so unpack them into the extracted
+     * native cache instead of downloading a prebuilt build. `dir.name` is the platform key
+     * (e.g. `android-aarch64`).
+     */
+    private fun extractBundledAndroidLibraries(dir: File): Boolean {
+        if (!dir.exists() && !dir.mkdirs()) return false
+        val names = bundledAndroidLibraryNames(dir)
+        if (names.isEmpty()) return false
+        return runCatching {
+            var extracted = 0
+            for (name in names) {
+                val dest = File(dir, name)
+                if (dest.isFile && dest.length() > 0L) continue
+                val resource = "/dreamdisplays-natives/${dir.name}/$name"
+                javaClass.getResourceAsStream(resource)?.use { input ->
+                    val tmp = File(dir, "$name.tmp")
+                    tmp.outputStream().use { out -> input.copyTo(out) }
+                    if (!tmp.renameTo(dest)) tmp.delete()
+                    extracted++
+                }
+            }
+            extracted > 0 && hasFfmpeg(dir)
+        }.getOrElse { e ->
+            logger.warn("Could not extract bundled FFmpeg libraries (${e.javaClass.simpleName}: ${e.message}).")
+            false
+        }
+    }
+
+    /** The bundled FFmpeg SONAME files to extract: the jar manifest first, then a fixed fallback. */
+    private fun bundledAndroidLibraryNames(dir: File): List<String> {
+        val manifest = "/dreamdisplays-natives/${dir.name}/ffmpeg-shared.txt"
+        javaClass.getResourceAsStream(manifest)?.use { input ->
+            val names = input.bufferedReader().useLines { lines ->
+                lines.map { it.trim() }.filter { it.isNotEmpty() }.toList()
+            }
+            if (names.isNotEmpty()) return names
+        }
+        return ANDROID_FFMPEG_FALLBACK_LIBRARIES
+    }
+
+    /** FFmpeg 8.1 SONAMEs: avutil 60, swresample 6, swscale 9, avcodec 62, avformat 62. */
+    private val ANDROID_FFMPEG_FALLBACK_LIBRARIES = listOf(
+        "libavutil.so.60",
+        "libswresample.so.6",
+        "libswscale.so.9",
+        "libavcodec.so.62",
+        "libavformat.so.62",
+    )
+
     /** Resolves the prebuilt shared build for this platform, or null when none is available. */
     private fun source(): Source? = when {
+        OsInfo.isAndroid -> null
         OsInfo.isMac -> null
         OsInfo.isWindows -> {
             val arch = if (OsInfo.isArm64) "winarm64" else "win64"

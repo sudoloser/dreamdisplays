@@ -85,9 +85,11 @@ val dreamDisplaysShadedPackages = listOf(
  * `sqlite-jdbc` bundles native binaries for platforms this project never runs on. Superset of what
  * each loader excluded before (they'd drifted slightly out of sync); a wider exclude list can only
  * shrink the jar, never break it.
+ *
+ * Android is intentionally absent here: `sqlite-jdbc` 3.5x dropped its `Linux-Android` natives, and
+ * the Android ABI libs are bundled separately under `dreamdisplays-natives/android-*` instead.
  */
 val dreamDisplaysSqliteNativeExcludes = listOf(
-    "org/sqlite/native/Linux-Android/**",
     "org/sqlite/native/Linux-Musl/x86/**",
     "org/sqlite/native/FreeBSD/**",
     "org/sqlite/native/Linux/ppc64/**",

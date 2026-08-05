@@ -578,7 +578,9 @@ object NativeMedia {
 
     private fun isDreamDisplaysLibrary(name: String): Boolean {
         val lower = name.lowercase()
-        return lower.contains("dreamdisplays_native") || lower.contains("dreamdisplays_lav")
+        return lower.contains("dreamdisplays_native")
+                || lower.contains("dreamdisplays_lav")
+                || lower.contains("sqlitejdbc")
     }
 
     private fun sharedLibraryLoadOrder(name: String): Int {
@@ -656,6 +658,13 @@ object NativeMedia {
 
     /** Platform key matching the layout used by the FFmpeg binary cache. */
     private fun platformKey(): String = when {
+        OsInfo.isAndroid -> when {
+            OsInfo.isArm64 -> "android-aarch64"
+            OsInfo.isX86_64 -> "android-x64"
+            OsInfo.isX86 -> "android-x86"
+            else -> "android-arm"
+        }
+
         OsInfo.isWindows -> if (OsInfo.isArm) "windows-aarch64" else "windows-x64"
         OsInfo.isMac -> if (OsInfo.isArm) "macos-aarch64" else "macos-x64"
         else -> if (OsInfo.isArm) "linux-aarch64" else "linux-x64"

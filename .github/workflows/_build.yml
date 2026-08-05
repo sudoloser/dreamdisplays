@@ -145,6 +145,34 @@ jobs:
                   "native_library": "dreamdisplays_native.dll",
                   "lav_library": "dreamdisplays_lav.dll",
               },
+              {
+                  "platform": "android-aarch64",
+                  "runner": "ubuntu-latest",
+                  "target": "aarch64-linux-android",
+                  "native_library": "libdreamdisplays_native.so",
+                  "lav_library": "libdreamdisplays_lav.so",
+              },
+              {
+                  "platform": "android-arm",
+                  "runner": "ubuntu-latest",
+                  "target": "armv7-linux-androideabi",
+                  "native_library": "libdreamdisplays_native.so",
+                  "lav_library": "libdreamdisplays_lav.so",
+              },
+              {
+                  "platform": "android-x86",
+                  "runner": "ubuntu-latest",
+                  "target": "i686-linux-android",
+                  "native_library": "libdreamdisplays_native.so",
+                  "lav_library": "libdreamdisplays_lav.so",
+              },
+              {
+                  "platform": "android-x64",
+                  "runner": "ubuntu-latest",
+                  "target": "x86_64-linux-android",
+                  "native_library": "libdreamdisplays_native.so",
+                  "lav_library": "libdreamdisplays_lav.so",
+              },
           ]
           is_pull_request = os.environ.get("IS_PR") == "true"
           build_versions = versions
@@ -225,6 +253,116 @@ jobs:
           rustc --version
           cargo --version
 
+      - name: Setup Android NDK
+        if: contains(matrix.native.target, 'android')
+        shell: bash
+        run: |
+          set -euo pipefail
+          NDK_VERSION=r27c
+          NDK_ARCHIVE="${RUNNER_TEMP}/android-ndk-${NDK_VERSION}-linux.zip"
+          curl -fL --retry 3 --retry-all-errors \
+            -o "$NDK_ARCHIVE" \
+            "https://dl.google.com/android/repository/android-ndk-${NDK_VERSION}-linux.zip"
+          unzip -q "$NDK_ARCHIVE" -d "${RUNNER_TEMP}"
+          NDK_DIR="${RUNNER_TEMP}/android-ndk-${NDK_VERSION}"
+          NDK_BIN="${NDK_DIR}/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          case "${{ matrix.native.target }}" in
+            aarch64-linux-android) LINKER=aarch64-linux-android21-clang; ANDROID_CC_TRIPLE=aarch64-linux-android21 ;;
+            armv7-linux-androideabi) LINKER=armv7a-linux-androideabi21-clang; ANDROID_CC_TRIPLE=armv7a-linux-androideabi21 ;;
+            i686-linux-android) LINKER=i686-linux-android21-clang; ANDROID_CC_TRIPLE=i686-linux-android21 ;;
+            x86_64-linux-android) LINKER=x86_64-linux-android21-clang; ANDROID_CC_TRIPLE=x86_64-linux-android21 ;;
+            *) echo "Unsupported Android target: ${{ matrix.native.target }}" >&2; exit 1 ;;
+          esac
+          env_name="CARGO_TARGET_$(echo "${{ matrix.native.target }}" | tr '[:lower:]-' '[:upper:]_')_LINKER"
+          echo "${env_name}=${NDK_BIN}/${LINKER}" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK=${NDK_DIR}" >> "$GITHUB_ENV"
+          echo "ANDROID_TOOLCHAIN=${NDK_BIN}" >> "$GITHUB_ENV"
+          echo "ANDROID_SYSROOT=${NDK_DIR}/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> "$GITHUB_ENV"
+          echo "ANDROID_CC_TRIPLE=${ANDROID_CC_TRIPLE}" >> "$GITHUB_ENV"
+          # ffmpeg-sys-next runs bindgen on the host; point clang at the NDK target + sysroot
+          # so generated bindings use the Android pointer/long sizes.
+          echo "BINDGEN_EXTRA_CLANG_ARGS=--target=${ANDROID_CC_TRIPLE} --sysroot=${NDK_DIR}/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> "$GITHUB_ENV"
+
+      - name: Build FFmpeg for Android
+        if: contains(matrix.native.target, 'android')
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Android has no system FFmpeg, so cross-compile the shared libraries the
+          # in-process libav backend (`dreamdisplays_lav`) links against. The desktop
+          # jobs fetch prebuilt BtbN builds instead; keep the FFmpeg branch in sync
+          # with the `FFMPEG_BRANCH_SUFFIX` in `media/player/.../LavFfmpeg.kt`.
+          sudo apt-get update
+          sudo apt-get install -y clang libclang-dev nasm make pkg-config xz-utils
+
+          FFMPEG_VERSION=8.1
+          FFMPEG_DIR="${RUNNER_TEMP}/ffmpeg-android-${{ matrix.native.platform }}"
+          FFMPEG_SRC="${RUNNER_TEMP}/ffmpeg-android-src-${{ matrix.native.platform }}"
+
+          curl -fL --retry 3 --retry-all-errors \
+            -o "${RUNNER_TEMP}/ffmpeg-${FFMPEG_VERSION}.tar.xz" \
+            "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
+          tar -xf "${RUNNER_TEMP}/ffmpeg-${FFMPEG_VERSION}.tar.xz" -C "${RUNNER_TEMP}"
+          mv "${RUNNER_TEMP}/ffmpeg-${FFMPEG_VERSION}" "$FFMPEG_SRC"
+
+          case "${{ matrix.native.target }}" in
+            aarch64-linux-android) FFMPEG_ARCH=aarch64 ;;
+            armv7-linux-androideabi) FFMPEG_ARCH=arm ;;
+            i686-linux-android) FFMPEG_ARCH=i686 ;;
+            x86_64-linux-android) FFMPEG_ARCH=x86_64 ;;
+            *) echo "Unsupported Android target: ${{ matrix.native.target }}" >&2; exit 1 ;;
+          esac
+
+          EXTRA_CONFIGURE=()
+          case "$FFMPEG_ARCH" in
+            arm)
+              # The armv7a NDK toolchain defaults to ARMv7-A + NEON; force NEON on so the
+              # decoder gets the SIMD kernels.
+              EXTRA_CONFIGURE+=(--enable-neon)
+              ;;
+            i686)
+              # 32-bit x86 asm contains text relocations, which modern Android rejects.
+              EXTRA_CONFIGURE+=(--disable-asm)
+              ;;
+            x86_64)
+              EXTRA_CONFIGURE+=(--x86asmexe="$(command -v nasm)")
+              ;;
+          esac
+
+          cd "$FFMPEG_SRC"
+          ./configure \
+            --prefix="$FFMPEG_DIR" \
+            --enable-cross-compile \
+            --target-os=android \
+            --arch="$FFMPEG_ARCH" \
+            --sysroot="$ANDROID_SYSROOT" \
+            --cc="${ANDROID_TOOLCHAIN}/${ANDROID_CC_TRIPLE}-clang" \
+            --cxx="${ANDROID_TOOLCHAIN}/${ANDROID_CC_TRIPLE}-clang++" \
+            --ld="${ANDROID_TOOLCHAIN}/${ANDROID_CC_TRIPLE}-clang" \
+            --ar="${ANDROID_TOOLCHAIN}/llvm-ar" \
+            --as="${ANDROID_TOOLCHAIN}/${ANDROID_CC_TRIPLE}-clang" \
+            --nm="${ANDROID_TOOLCHAIN}/llvm-nm" \
+            --ranlib="${ANDROID_TOOLCHAIN}/llvm-ranlib" \
+            --strip="${ANDROID_TOOLCHAIN}/llvm-strip" \
+            --enable-shared \
+            --disable-static \
+            --disable-programs \
+            --disable-doc \
+            --disable-debug \
+            --disable-vulkan \
+            --disable-autodetect \
+            --enable-pthreads \
+            --extra-cflags="-O3 -fPIC" \
+            --extra-ldflags="-Wl,-z,max-page-size=16384" \
+            --pkg-config="$(command -v pkg-config)" \
+            "${EXTRA_CONFIGURE[@]}"
+          make -j"$(nproc)"
+          make install
+
+          echo "FFMPEG_DIR=$FFMPEG_DIR" >> "$GITHUB_ENV"
+          echo "FFMPEG_SOURCE_DIR=$FFMPEG_SRC" >> "$GITHUB_ENV"
+          echo "FFMPEG_CACHE_SUFFIX=ffmpeg-android-8.1" >> "$GITHUB_ENV"
+
       - name: Install FFmpeg dependencies on macOS
         if: runner.os == 'macOS'
         run: |
@@ -242,7 +380,7 @@ jobs:
           cache-on-failure: true
 
       - name: Install FFmpeg dependencies on Linux
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && !contains(matrix.native.target, 'android')
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
@@ -361,6 +499,7 @@ jobs:
       - name: Build native libraries
         shell: bash
         run: |
+          set -euo pipefail
           cargo build \
             --manifest-path native/Cargo.toml \
             --release \
@@ -372,11 +511,18 @@ jobs:
       - name: Test native libraries
         shell: bash
         run: |
+          set -euo pipefail
+          no_run=()
+          if [[ "${{ matrix.native.platform }}" == android-* ]]; then
+            echo "Android target: cross-compiled tests cannot run on the host; compiling with --no-run."
+            no_run=(--no-run)
+          fi
           cargo test \
             --manifest-path native/Cargo.toml \
             --release \
             --package dreamdisplays-native \
             --package dreamdisplays-lav \
+            "${no_run[@]}" \
             --locked \
             --target "${{ matrix.native.target }}"
 
@@ -384,14 +530,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          shopt -s nullglob
 
           platform="${{ matrix.native.platform }}"
           target="${{ matrix.native.target }}"
           native_library="${{ matrix.native.native_library }}"
           lav_library="${{ matrix.native.lav_library }}"
           ffmpeg_dir="${FFMPEG_DIR:-}"
+          is_android=0
+          case "$platform" in
+            android-*) is_android=1 ;;
+          esac
 
-          if [[ -z "$ffmpeg_dir" && -n "${PKG_CONFIG_PATH:-}" ]]; then
+          if [[ "$is_android" -eq 0 && -z "$ffmpeg_dir" && -n "${PKG_CONFIG_PATH:-}" ]]; then
             first_pkg_config_path="${PKG_CONFIG_PATH%%:*}"
             if [[ "$first_pkg_config_path" == */lib/pkgconfig && -d "$first_pkg_config_path" ]]; then
               ffmpeg_dir="$(cd "$first_pkg_config_path/../.." && pwd)"
@@ -403,80 +554,145 @@ jobs:
           mkdir -p "$out"
 
           cp "$release_dir/$native_library" "$out/"
-          cp "$release_dir/$lav_library" "$out/"
+          if [[ -n "$lav_library" ]]; then
+            cp "$release_dir/$lav_library" "$out/"
+          fi
 
-          collect_license_metadata() {
-            local license_dir="$out/licenses"
-            mkdir -p "$license_dir"
+          if [[ "$is_android" -eq 1 ]]; then
+            # Android bundles a prebuilt sqlite-jdbc native for the matching ABI; sqlite-jdbc
+            # 3.5x no longer ships Android binaries itself, so pull them from the last release
+            # that did (3.51.3.0) and mirror the loader's Linux-Android/<arch> layout by ABI.
+            sqlite_jdbc_version=3.51.3.0
+            sqlite_jar="${RUNNER_TEMP}/sqlite-jdbc-${sqlite_jdbc_version}.jar"
+            curl -fL --retry 3 --retry-all-errors \
+              -o "$sqlite_jar" \
+              "https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/${sqlite_jdbc_version}/sqlite-jdbc-${sqlite_jdbc_version}.jar"
+            case "$platform" in
+              android-arm) sqlite_folder=arm ;;
+              android-aarch64) sqlite_folder=aarch64 ;;
+              android-x86) sqlite_folder=x86 ;;
+              android-x64) sqlite_folder=x86_64 ;;
+            esac
+            unzip -p "$sqlite_jar" \
+              "org/sqlite/native/Linux-Android/${sqlite_folder}/libsqlitejdbc.so" \
+              > "$out/libsqlitejdbc.so"
 
-            local ffmpeg_bin=""
-            for candidate in \
-              "$ffmpeg_dir/bin/ffmpeg" \
-              "$ffmpeg_dir/bin/ffmpeg.exe" \
-              "$(command -v ffmpeg 2>/dev/null || true)"; do
-              if [[ -n "$candidate" && -f "$candidate" ]]; then
-                ffmpeg_bin="$candidate"
-                break
+            # Bundle the FFmpeg shared libraries built in the "Build FFmpeg for Android" step.
+            # Keep only the SONAME-style files (libX.so.<major>) that `dreamdisplays_lav`
+            # records as DT_NEEDED; skip the fully-versioned originals. The manifest tells the
+            # runtime extractor (LavFfmpeg) exactly which files to unpack from the jar.
+            ffmpeg_libs=()
+            for lib in "$ffmpeg_dir"/lib/lib*.so.*; do
+              base="$(basename "$lib")"
+              if [[ "$base" =~ ^lib(av|sw)[a-z0-9]+\.so\.[0-9]+$ ]]; then
+                cp -L "$lib" "$out/$base"
+                ffmpeg_libs+=("$base")
               fi
             done
+            printf '%s\n' "${ffmpeg_libs[@]}" | sort > "$out/ffmpeg-shared.txt"
 
-            if [[ -n "$ffmpeg_bin" ]]; then
-              "$ffmpeg_bin" -hide_banner -version > "$license_dir/ffmpeg-version.txt" 2>&1 || true
-              "$ffmpeg_bin" -hide_banner -L > "$license_dir/ffmpeg-license.txt" 2>&1 || true
-            fi
-
-            if [[ -n "$ffmpeg_dir" && -d "$ffmpeg_dir" ]]; then
-              while IFS= read -r license_file; do
-                cp "$license_file" "$license_dir/ffmpeg-$(basename "$license_file")"
-              done < <(find "$ffmpeg_dir" -maxdepth 2 -iname 'LICENSE*' -type f -print)
-            fi
-
-            case "${RUNNER_OS:-}" in
-              Linux)
-                cp /usr/share/doc/ffmpeg/copyright "$license_dir/ffmpeg-debian-copyright.txt" 2>/dev/null || true
-                ;;
-              macOS)
-                if command -v brew >/dev/null 2>&1; then
-                  brew info --json=v2 ffmpeg > "$license_dir/ffmpeg-homebrew.json" 2>/dev/null || true
-                fi
-                ;;
-            esac
-
-            if [[ ! -s "$license_dir/ffmpeg-license.txt" ]]; then
-              for fallback in \
-                "$license_dir"/ffmpeg-LICENSE* \
-                "$license_dir/ffmpeg-debian-copyright.txt" \
-                "$license_dir/ffmpeg-homebrew.json"; do
-                if [[ -s "$fallback" ]]; then
-                  cp "$fallback" "$license_dir/ffmpeg-license.txt"
-                  break
-                fi
-              done
-            fi
-
-            if [[ ! -s "$license_dir/ffmpeg-license.txt" ]]; then
+            # LGPL license metadata for the bundled FFmpeg, taken from the source tree.
+            mkdir -p "$out/licenses"
+            for f in LICENSE COPYING.LGPLv2.1 COPYING.LGPLv3; do
+              if [[ -f "${FFMPEG_SOURCE_DIR:-}/$f" ]]; then
+                cp "$FFMPEG_SOURCE_DIR/$f" "$out/licenses/ffmpeg-$f"
+              fi
+            done
+            if [[ -f "${FFMPEG_SOURCE_DIR:-}/LICENSE" ]]; then
+              cp "$FFMPEG_SOURCE_DIR/LICENSE" "$out/licenses/ffmpeg-license.txt"
+            else
               {
                 echo "FFmpeg license metadata"
                 echo "Platform: $platform"
-                echo "Runner OS: ${RUNNER_OS:-unknown}"
-                echo "FFmpeg directory: ${ffmpeg_dir:-unknown}"
                 echo "FFmpeg source: https://ffmpeg.org/"
-                echo "BtbN builds: https://github.com/BtbN/FFmpeg-Builds"
-              } > "$license_dir/ffmpeg-license.txt"
+              } > "$out/licenses/ffmpeg-license.txt"
             fi
-          }
-
-          if [[ "${RUNNER_OS:-}" == "Linux" ]] && command -v patchelf >/dev/null 2>&1; then
-            for lib in "$out/$native_library" "$out/$lav_library"; do
-              patchelf --set-rpath '$ORIGIN' "$lib" || true
-            done
           fi
-          collect_license_metadata
 
-          for required in "$native_library" "$lav_library"; do
-            test -f "$out/$required"
-          done
-          test -s "$out/licenses/ffmpeg-license.txt"
+          if [[ "$is_android" -eq 0 ]]; then
+            collect_license_metadata() {
+              local license_dir="$out/licenses"
+              mkdir -p "$license_dir"
+
+              local ffmpeg_bin=""
+              for candidate in \
+                "$ffmpeg_dir/bin/ffmpeg" \
+                "$ffmpeg_dir/bin/ffmpeg.exe" \
+                "$(command -v ffmpeg 2>/dev/null || true)"; do
+                if [[ -n "$candidate" && -f "$candidate" ]]; then
+                  ffmpeg_bin="$candidate"
+                  break
+                fi
+              done
+
+              if [[ -n "$ffmpeg_bin" ]]; then
+                "$ffmpeg_bin" -hide_banner -version > "$license_dir/ffmpeg-version.txt" 2>&1 || true
+                "$ffmpeg_bin" -hide_banner -L > "$license_dir/ffmpeg-license.txt" 2>&1 || true
+              fi
+
+              if [[ -n "$ffmpeg_dir" && -d "$ffmpeg_dir" ]]; then
+                while IFS= read -r license_file; do
+                  cp "$license_file" "$license_dir/ffmpeg-$(basename "$license_file")"
+                done < <(find "$ffmpeg_dir" -maxdepth 2 -iname 'LICENSE*' -type f -print)
+              fi
+
+              case "${RUNNER_OS:-}" in
+                Linux)
+                  cp /usr/share/doc/ffmpeg/copyright "$license_dir/ffmpeg-debian-copyright.txt" 2>/dev/null || true
+                  ;;
+                macOS)
+                  if command -v brew >/dev/null 2>&1; then
+                    brew info --json=v2 ffmpeg > "$license_dir/ffmpeg-homebrew.json" 2>/dev/null || true
+                  fi
+                  ;;
+              esac
+
+              if [[ ! -s "$license_dir/ffmpeg-license.txt" ]]; then
+                for fallback in \
+                  "$license_dir"/ffmpeg-LICENSE* \
+                  "$license_dir/ffmpeg-debian-copyright.txt" \
+                  "$license_dir/ffmpeg-homebrew.json"; do
+                  if [[ -s "$fallback" ]]; then
+                    cp "$fallback" "$license_dir/ffmpeg-license.txt"
+                    break
+                  fi
+                done
+              fi
+
+              if [[ ! -s "$license_dir/ffmpeg-license.txt" ]]; then
+                {
+                  echo "FFmpeg license metadata"
+                  echo "Platform: $platform"
+                  echo "Runner OS: ${RUNNER_OS:-unknown}"
+                  echo "FFmpeg directory: ${ffmpeg_dir:-unknown}"
+                  echo "FFmpeg source: https://ffmpeg.org/"
+                  echo "BtbN builds: https://github.com/BtbN/FFmpeg-Builds"
+                } > "$license_dir/ffmpeg-license.txt"
+              fi
+            }
+
+            if [[ "${RUNNER_OS:-}" == "Linux" ]] && command -v patchelf >/dev/null 2>&1; then
+              for lib in "$out/$native_library" "$out/$lav_library"; do
+                patchelf --set-rpath '$ORIGIN' "$lib" || true
+              done
+            fi
+            collect_license_metadata
+          fi
+
+          test -f "$out/$native_library"
+          if [[ -n "$lav_library" ]]; then
+            test -f "$out/$lav_library"
+          fi
+          if [[ "$is_android" -eq 1 ]]; then
+            test -s "$out/libsqlitejdbc.so"
+            test -s "$out/ffmpeg-shared.txt"
+            grep -q '^libavcodec\.so\.[0-9]\+$' "$out/ffmpeg-shared.txt"
+            grep -q '^libavformat\.so\.[0-9]\+$' "$out/ffmpeg-shared.txt"
+            grep -q '^libavutil\.so\.[0-9]\+$' "$out/ffmpeg-shared.txt"
+            test -s "$out/licenses/ffmpeg-license.txt"
+          else
+            test -s "$out/licenses/ffmpeg-license.txt"
+          fi
 
           find "$out" -maxdepth 2 -type f -print | sort
           tar -cf "native-artifact/native-$platform.tar" -C "$out/.." "$platform"
@@ -564,8 +780,18 @@ jobs:
           }
           for platform in $REQUIRED_NATIVE_PLATFORMS; do
             test -f "native/build/ci-bundle/dreamdisplays-natives/$platform/$(native_name "$platform")"
-            test -f "native/build/ci-bundle/dreamdisplays-natives/$platform/$(lav_name "$platform")"
-            test -s "native/build/ci-bundle/dreamdisplays-natives/$platform/licenses/ffmpeg-license.txt"
+            case "$platform" in
+              android-*)
+                test -f "native/build/ci-bundle/dreamdisplays-natives/$platform/$(lav_name "$platform")"
+                test -f "native/build/ci-bundle/dreamdisplays-natives/$platform/libsqlitejdbc.so"
+                test -s "native/build/ci-bundle/dreamdisplays-natives/$platform/ffmpeg-shared.txt"
+                test -s "native/build/ci-bundle/dreamdisplays-natives/$platform/licenses/ffmpeg-license.txt"
+                ;;
+              *)
+                test -f "native/build/ci-bundle/dreamdisplays-natives/$platform/$(lav_name "$platform")"
+                test -s "native/build/ci-bundle/dreamdisplays-natives/$platform/licenses/ffmpeg-license.txt"
+                ;;
+            esac
           done
           find native/build/ci-bundle/dreamdisplays-natives -maxdepth 2 -type f -print | sort
         env:
@@ -608,6 +834,15 @@ jobs:
           version = "${{ needs.metadata.outputs.version }}"
           platforms = os.environ["REQUIRED_NATIVE_PLATFORMS"].split()
           ffmpeg_components = ("avutil", "swresample", "swscale", "avcodec", "avformat", "avfilter", "avdevice")
+          # FFmpeg 8.1 SONAME files bundled with the Android ABIs (kept in sync with the
+          # "Build FFmpeg for Android" step and `LavFfmpeg`).
+          android_ffmpeg_libs = (
+              "libavutil.so.60",
+              "libswresample.so.6",
+              "libswscale.so.9",
+              "libavcodec.so.62",
+              "libavformat.so.62",
+          )
 
           def native_name(platform: str) -> str:
               if platform.startswith("windows-"):
@@ -623,11 +858,16 @@ jobs:
                   return "libdreamdisplays_lav.dylib"
               return "libdreamdisplays_lav.so"
 
-          expected = [
-              f"{platform}/{name}"
-              for platform in platforms
-              for name in (native_name(platform), lav_name(platform), "licenses/ffmpeg-license.txt")
-          ]
+          expected = []
+          for platform in platforms:
+              expected.append(f"{platform}/{native_name(platform)}")
+              expected.append(f"{platform}/{lav_name(platform)}")
+              if platform.startswith("android-"):
+                  expected.append(f"{platform}/libsqlitejdbc.so")
+                  expected.extend(f"{platform}/{lib}" for lib in android_ffmpeg_libs)
+                  expected.append(f"{platform}/licenses/ffmpeg-license.txt")
+              else:
+                  expected.append(f"{platform}/licenses/ffmpeg-license.txt")
 
           for loader in ("fabric", "neoforge"):
               jar = Path(f"build/libs/dreamdisplays-{loader}-{mc}-{version}.jar")
@@ -645,9 +885,12 @@ jobs:
               if missing:
                   raise SystemExit(f"{jar} is missing native entries: {missing}.")
 
+              # Non-Android platforms must not bundle FFmpeg shared libraries (the in-process
+              # libav backend downloads them at runtime); Android bundles them by design.
               bundled_ffmpeg = [
                   name for name in names
                   if name.startswith("dreamdisplays-natives/")
+                  and not name.split("/", 2)[1].startswith("android-")
                   and any(component in name.rsplit("/", 1)[-1].lower() for component in ffmpeg_components)
                   and (name.endswith(".dll") or name.endswith(".dylib") or ".so" in name.rsplit("/", 1)[-1])
               ]

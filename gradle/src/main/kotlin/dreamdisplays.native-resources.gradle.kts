@@ -48,11 +48,13 @@ tasks.withType<ProcessResources>().configureEach {
         }
 
         val missingNativeLibraries = requiredNativePlatforms.flatMap { platformKey ->
-            nativeLibraryBaseNames.map { libBaseName ->
+            requiredNativeLibrariesFor(platformKey).map { libBaseName ->
                 File(nativeBundleDir, "$platformKey/${nativeLibraryName(platformKey, libBaseName)}")
             }
         }.filterNot { it.isFile }
 
+        // Android bundles cross-compiled FFmpeg shared libraries, so its license metadata is
+        // required just like every other platform's.
         val missingLicenseFiles = requiredNativePlatforms
             .map { platformKey -> File(nativeBundleDir, "$platformKey/licenses/ffmpeg-license.txt") }
             .filterNot { it.isFile && it.length() > 0L }

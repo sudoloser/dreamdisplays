@@ -8,13 +8,39 @@ val nativePlatformKeys = listOf(
     "macos-aarch64",
     "windows-x64",
     "windows-aarch64",
+    "android-arm",
+    "android-aarch64",
+    "android-x86",
+    "android-x64",
 )
+
+/** Android native platform keys, one per Android ABI (armeabi-v7a, arm64-v8a, x86, x86_64). */
+val androidNativePlatformKeys = listOf(
+    "android-arm",
+    "android-aarch64",
+    "android-x86",
+    "android-x64",
+)
+
+/** True when the platform key is an Android ABI. */
+fun isAndroidPlatformKey(platformKey: String): Boolean = platformKey in androidNativePlatformKeys
 
 /** Native library base names. */
 val nativeLibraryBaseNames = listOf(
     "dreamdisplays_native",
     "dreamdisplays_lav",
 )
+
+/**
+ * Native libraries required for a platform. Every platform bundles the full native pipeline
+ * (`dreamdisplays_native`) plus the in-process libav backend (`dreamdisplays_lav`), which links
+ * the FFmpeg shared libraries the bundle also carries: Android ships cross-compiled FFmpeg
+ * SONAME libs, while desktop / macOS get them from the runtime downloader. Android additionally
+ * bundles a prebuilt `sqlitejdbc` native, since sqlite-jdbc no longer ships Android binaries itself.
+ */
+fun requiredNativeLibrariesFor(platformKey: String): List<String> =
+    if (isAndroidPlatformKey(platformKey)) nativeLibraryBaseNames + "sqlitejdbc"
+    else nativeLibraryBaseNames
 
 /** Set the native library name based on the platform key. */
 fun nativeLibraryName(platformKey: String, baseName: String): String = when {
